@@ -9,6 +9,7 @@
 import math
 import random
 import time
+from abc import ABC
 from urllib.parse import urlencode
 
 from tornado.httpclient import HTTPRequest
@@ -21,7 +22,7 @@ from models.basemodel import UserBase
 from utils.request_util import BaseHandler, ReturnData
 
 
-class AdminHandler(BaseHandler):
+class AdminHandler(BaseHandler, ABC):
 
     @no_parameter_check(check=False)
     async def post(self, role, level=None):
@@ -46,7 +47,7 @@ class AdminHandler(BaseHandler):
         return 200
 
 
-class SendSmsCode(BaseHandler):
+class SendSmsCode(BaseHandler, ABC):
     """
     发送短信验证码
     redis_key:channel+phone
@@ -82,7 +83,7 @@ class SendSmsCode(BaseHandler):
         await self.post()
 
 
-class UserRegister(BaseHandler):
+class UserRegister(BaseHandler, ABC):
     """
     用户注册
     一个手机号只能注册一次
@@ -110,7 +111,7 @@ class UserRegister(BaseHandler):
         await self.post()
 
 
-class UserLogin(BaseHandler):
+class UserLogin(BaseHandler, ABC):
     """
     用户登录
     redis_key:channel+uid
@@ -148,7 +149,7 @@ class UserLogin(BaseHandler):
         await self.post()
 
 
-class CheckSmsCode(BaseHandler):
+class CheckSmsCode(BaseHandler, ABC):
     """
     校验短信验证码
     """
@@ -172,7 +173,7 @@ class CheckSmsCode(BaseHandler):
         await self.post()
 
 
-class ResetPassword(BaseHandler):
+class ResetPassword(BaseHandler, ABC):
     """
     修改密码
     """
