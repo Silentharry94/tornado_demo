@@ -122,24 +122,26 @@ class UserLogin(BaseHandler):
         data = None
         username = self.parameter.get("username", None)
         password = self.parameter.get("password", None)
+
         # 未输入账号密码
         if not username or not password:
             code = 206
-        user_account = UserBase.get_or_none(UserBase.username == username)
-        # 账号不存在
-        if user_account is None:
-            code = 203
-        # 密码不正确
-        elif password != DealEncrypt.crypto_decrypt(user_account.password):
-            code = 204
-        # 正确返回
         else:
-            time_stamp = str(math.ceil(time.time()))
-            salt = "".join([username, time_stamp])
-            token = DealEncrypt.hash_sha256_encrypt(salt)
-            key = "".join([self.channel, user_account.uid])
-            self._redis.set(key, token)
-            data = {"token": token}
+            user_account = UserBase.get_or_none(UserBase.username == username)
+            # 账号不存在
+            if user_account is None:
+                code = 203
+            # 密码不正确
+            elif password != DealEncrypt.crypto_decrypt(user_account.password):
+                code = 204
+            # 正确返回
+            else:
+                time_stamp = str(math.ceil(time.time()))
+                salt = "".join([username, time_stamp])
+                token = DealEncrypt.hash_sha256_encrypt(salt)
+                key = "".join([self.channel, user_account.uid])
+                self._redis.set(key, token)
+                data = {"token": token}
         return ReturnData(code, data)
 
     async def get(self):
