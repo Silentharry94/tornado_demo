@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# @Time    : 2019/12/19 下午4:21
+# @Author  : Hanley
+# @File    : common.py
+# @Desc    : 公共方法文件
+
 import base64
 import configparser
 import datetime
 import hashlib
 import json
-# @Time    : 2019/12/19 下午4:21
-# @Author  : Hanley
-# @File    : common.py
-# @Desc    : 公共方法文件
 import os
 import random
 import re

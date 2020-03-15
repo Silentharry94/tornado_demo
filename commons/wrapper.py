@@ -12,7 +12,7 @@ from jsonschema import Draft4Validator, ValidationError
 
 from commons.constant import Constant
 from commons.initlog import logging
-from commons.status_code import *  # noqa
+from commons.status_code import *
 from utils.request_util import ReturnData
 
 
