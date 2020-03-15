@@ -16,7 +16,7 @@ from commons.status_code import *
 from utils.request_util import ReturnData
 
 
-def parameter_check(schema, valid_check=False):
+def parameter_check(schema, valid=False):
     def validate(func):
         async def wrapper(self, *args, **kwargs):
             logging.debug("====================================")
@@ -29,7 +29,7 @@ def parameter_check(schema, valid_check=False):
                 return_data = ReturnData(CODE_0, msg=e.message)
             else:
                 flag = True
-                if valid_check:
+                if valid:
                     flag = valid_login(self)
                 if flag:
                     try:
