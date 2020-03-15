@@ -19,6 +19,8 @@ import traceback
 import uuid
 from collections.abc import Iterable
 from functools import wraps
+from random import choice
+from string import ascii_letters
 
 import ujson
 from Crypto.Cipher import AES
@@ -57,18 +59,6 @@ class Common(object):
             temp = config.get(section, option)
             dict_result.update({option: temp})
         return dict_result
-
-    @staticmethod
-    def generate_random_id() -> str:
-        now = datetime.datetime.now().strftime("%Y%m%d")
-        unix = str(time.time()).replace('.', "")[-10:]
-        rand_ind = random.randint(1000, 9999)
-        return ''.join([now[-6:], unix, str(rand_ind)])
-
-    @staticmethod
-    def generate_uuid() -> str:
-        _uuid1 = str(uuid.uuid1())
-        return str(uuid.uuid3(uuid.NAMESPACE_DNS, _uuid1)).replace('-', '')
 
     @staticmethod
     def format_datetime(data):
@@ -160,10 +150,68 @@ class Common(object):
             return type(data)([cls.format_decimal(k) for k in data])
         return data
 
-    def genarate_radmon(self):
+    @staticmethod
+    def format_time_ampm(time_or_datetime):
+        if isinstance(time_or_datetime, datetime.datetime):
+            h = int(time_or_datetime.strftime('%I'))
+            ampm = time_or_datetime.strftime('%p').lower()
+            if time_or_datetime.minute:
+                m = time_or_datetime.strftime('%M')
+                return "%s:%s%s" % (h, m, ampm)
+            else:
+                return "%s%s" % (h, ampm)
+        elif isinstance(time_or_datetime, (tuple, list)) and len(time_or_datetime) >= 2:
+            h = time_or_datetime[0]
+            m = time_or_datetime[1]
+            assert isinstance(h, int), type(h)
+            assert isinstance(m, int), type(m)
+            ampm = 'am'
+            if h > 12:
+                ampm = 'pm'
+                h -= 12
+            if m:
+                return "%s:%s%s" % (h, m, ampm)
+            else:
+                return "%s%s" % (h, ampm)
+        else:
+            raise ValueError("Wrong parameter to this function")
+
+
+class GenerateRandom(object):
+
+    @staticmethod
+    def generate_random_id() -> str:
+        now = datetime.datetime.now().strftime("%Y%m%d")
+        unix = str(time.time()).replace('.', "")[-10:]
+        rand_ind = random.randint(1000, 9999)
+        return ''.join([now[-6:], unix, str(rand_ind)])
+
+    @staticmethod
+    def generate_uuid() -> str:
+        _uuid1 = str(uuid.uuid1())
+        return str(uuid.uuid3(uuid.NAMESPACE_DNS, _uuid1)).replace('-', '')
+
+    @staticmethod
+    def random_session_id():
         create_session_id = lambda: hashlib.sha1(
             bytes("{}{}".format(os.urandom(16), time.time()), encoding="utf-8")).hexdigest()
-        return os.urandom(16).hex()
+        return create_session_id()
+
+    @staticmethod
+    def random_string(length=10):
+        return ''.join(choice(ascii_letters) for _ in range(length))
+
+    @staticmethod
+    def generate_random_color():
+        def dec2hex(d):
+            return "%02X" % d
+
+        return '#%s%s%s' % (
+            dec2hex(random.randint(0, 255)),
+            dec2hex(random.randint(0, 255)),
+            dec2hex(random.randint(0, 255)),
+        )
+
 
 class DealEncrypt(object):
 
@@ -253,3 +301,8 @@ class CJsonEncoder(json.JSONEncoder):
             return obj.strftime("%Y-%m-%d")
         else:
             return json.JSONEncoder.default(self, obj)
+
+
+from pprint import pprint
+
+pprint(GenerateRandom.generate_random_color())
