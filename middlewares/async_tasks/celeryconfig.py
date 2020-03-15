@@ -40,26 +40,8 @@ CELERY_IMPORTS = [
 
 # 需要执行任务的配置
 CELERYBEAT_SCHEDULE = {
-    # "agencyshome": { # 数据更新监控，邮件提醒
-    #     "task": "async_tasks.tasks.demotest",
-    #     # "schedule": timedelta(seconds=1),   # 监控当天数据更新情况
-    #     "schedule": crontab(minute=1),   # 监控当天数据更新情况
-    #     "args": ()
-    # },
     "remind_order": {  # 提醒发货
-        "task": "async_tasks.tasks.remind_order_next_day",
-        # "schedule": timedelta(seconds=1),   # 监控当天数据更新情况
-        "schedule": crontab(minute=0, hour=8),  # 监控当天数据更新情况
-        "args": ()
-    },
-    "remind_sh_order": {  # 提醒审核
-        "task": "async_tasks.tasks.remind_sh_order_next_day",
-        # "schedule": timedelta(seconds=1),   # 监控当天数据更新情况
-        "schedule": crontab(minute=0, hour=8),  # 监控当天数据更新情况
-        "args": ()
-    },
-    "remind_app_charge": {  # 账单提醒
-        "task": "async_tasks.tasks.remind_app_back_money",
+        "task": "async_tasks.tasks.remind",
         # "schedule": timedelta(seconds=1),   # 监控当天数据更新情况
         "schedule": crontab(minute=0, hour=8),  # 监控当天数据更新情况
         "args": ()
