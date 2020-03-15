@@ -1,38 +1,45 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# @Time    : 2019/12/19 下午4:21
-# @Author  : Hanley
-# @File    : common.py
-# @Desc    : 公共方法文件
-
 import base64
 import configparser
 import datetime
 import hashlib
 import json
-import math
+# @Time    : 2019/12/19 下午4:21
+# @Author  : Hanley
+# @File    : common.py
+# @Desc    : 公共方法文件
+import os
 import random
+import re
 import time
+import traceback
 import uuid
+from collections.abc import Iterable
 from functools import wraps
 
+import ujson
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+from tornado.httpclient import AsyncHTTPClient, HTTPClient
 
 from commons.constant import Constant
+from commons.initlog import logging
+from commons.status_code import *
 
 
 def Singleton(cls):
     _instance = {}
 
     @wraps(cls)
-    def _singlenton(*args, **kargs):
+    def _singleton(*args, **kargs):
         if cls not in _instance:
             _instance[cls] = cls(*args, **kargs)
         return _instance[cls]
 
-    return _singlenton
+    return _singleton
+
 
 
 class Common(object):
@@ -53,9 +60,9 @@ class Common(object):
     @staticmethod
     def generate_random_id() -> str:
         now = datetime.datetime.now().strftime("%Y%m%d")
-        unix = str(math.ceil(time.time()))
-        rand_ind = random.randint(100000, 999999)
-        return ''.join([str(rand_ind), unix[2:10], now[-6:]])
+        unix = str(time.time()).replace('.', "")[-10:]
+        rand_ind = random.randint(1000, 9999)
+        return ''.join([now[-6:], unix, str(rand_ind)])
 
     @staticmethod
     def generate_uuid() -> str:
@@ -71,13 +78,100 @@ class Common(object):
         else:
             return data
 
+    @staticmethod
+    def validate_phone(phone_number: str) -> bool:
+        _pattern = r"13\d{9}|14\d{9}|15\d{9}|16\d{9}|17\d{9}|18\d{9}|19\d{9}"
+        pattern = re.compile(_pattern)
+        if len(phone_number) != 11:
+            return False
+        else:
+            if pattern.findall(phone_number):
+                return True
+            else:
+                return False
+
+    @staticmethod
+    def sync_fetch(req):
+        try:
+            response = HTTPClient().fetch(req)
+            try:
+                data = ujson.loads(response.body)
+            except BaseException:
+                data = response.body
+        except BaseException:
+            logging.error("route: {} return error".format(req.url))
+            logging.error(traceback.format_exc())
+            if req.method == "GET":
+                param = req.url
+            else:
+                param = ujson.loads(req.body)
+            data = {"code": CODE_0, "data": param, "msg": "外部接口调用异常"}
+            return data
+        return data
+
+    @staticmethod
+    async def async_fetch(req):
+        try:
+            response = await AsyncHTTPClient().fetch(req)
+            logging.error("res: {}".format(response))
+            try:
+                rpc_data = ujson.loads(response.body)
+            except BaseException:
+                rpc_data = response.body
+        except BaseException:
+            error_data = {"code": CODE_0, "msg": "", "data": None}
+            logging.error(traceback.format_exc())
+            return error_data
+        return rpc_data
+
+    @classmethod
+    def decimal_dict(cls, _dict: dict):
+        for k in _dict:
+            if isinstance(_dict[k], dict):
+                cls.format_decimal(_dict[k])
+            else:
+                if isinstance(_dict[k], float):
+                    _dict[k] = "{:.2f}".format(_dict[k])
+                elif isinstance(_dict[k], str):
+                    try:
+                        _dict[k] = "{:.2f}".format(float(_dict[k]))
+                    except BaseException:
+                        continue
+                elif isinstance(_dict[k], Iterable):
+                    _dict[k] = type(_dict[k])([cls.format_decimal(k) for k in _dict[k]])
+                else:
+                    return _dict
+        return _dict
+
+    @classmethod
+    def format_decimal(cls, data):
+        if isinstance(data, dict):
+            return cls.decimal_dict(data)
+        if isinstance(data, float):
+            return "{:.2f}".format(data)
+        if isinstance(data, str):
+            try:
+                data = "{:.2f}".format(float(data))
+            except BaseException:
+                pass
+            return data
+        if isinstance(data, Iterable):
+            return type(data)([cls.format_decimal(k) for k in data])
+        return data
+
+    def genarate_radmon(self):
+        create_session_id = lambda: hashlib.sha1(
+            bytes("{}{}".format(os.urandom(16), time.time()), encoding="utf-8")).hexdigest()
+        return os.urandom(16).hex()
 
 class DealEncrypt(object):
 
     # base64加密
     @staticmethod
-    def b64_encrypt(data: str) -> str:
-        enb64_str = base64.b64encode(data.encode('utf-8'))
+    def b64_encrypt(data: (str, bytes)) -> str:
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        enb64_str = base64.b64encode(data)
         return enb64_str.decode('utf-8')
 
     # base64解密
@@ -100,33 +194,46 @@ class DealEncrypt(object):
 
     # hashlib md5加密
     @staticmethod
-    def hash_md5_encrypt(data: str) -> str:
+    def hash_md5_encrypt(data: (str, bytes)) -> str:
+        if isinstance(data, str):
+            data = data.encode('utf-8')
         md5 = hashlib.md5()
         md5.update(Constant.ENCRYPT_KEY.encode('utf-8'))
-        md5.update(data.encode('utf-8'))
+        md5.update(data)
         return md5.hexdigest()
 
     # hashlib sha1加密
     @staticmethod
-    def hash_sha1_encrypt(data: str) -> str:
+    def hash_sha1_encrypt(data: (str, bytes)) -> str:
+        if isinstance(data, str):
+            data = data.encode('utf-8')
         md5 = hashlib.sha1()
         md5.update(Constant.ENCRYPT_KEY.encode('utf-8'))
-        md5.update(data.encode('utf-8'))
+        md5.update(data)
         return md5.hexdigest()
 
     # hashlib sha256加密
     @staticmethod
-    def hash_sha256_encrypt(data: str) -> str:
+    def hash_sha256_encrypt(data: (str, bytes)) -> str:
+        if isinstance(data, str):
+            data = data.encode('utf-8')
         md5 = hashlib.sha256()
         md5.update(Constant.ENCRYPT_KEY.encode('utf-8'))
-        md5.update(data.encode('utf-8'))
+        md5.update(data)
         return md5.hexdigest()
 
     # Crypto AES加密
     @staticmethod
-    def crypto_encrypt(data: str) -> str:
+    def crypto_encrypt(data: (str, bytes)) -> str:
+        """
+        data大于16位，返回64位字符；小于16位，返回32位字符
+        :param data:
+        :return:
+        """
+        if isinstance(data, str):
+            data = data.encode('utf-8')
         cipher = AES.new(Constant.ENCRYPT_KEY.encode('utf8'), AES.MODE_ECB)
-        msg = cipher.encrypt(pad(data.encode('utf-8'), Constant.BLOCK_SIZE))
+        msg = cipher.encrypt(pad(data, Constant.BLOCK_SIZE))
         return msg.hex()
 
     # Crypto AES解密
@@ -145,10 +252,3 @@ class CJsonEncoder(json.JSONEncoder):
             return obj.strftime("%Y-%m-%d")
         else:
             return json.JSONEncoder.default(self, obj)
-
-# if __name__ == '__main__':
-#     # 加密请执行此处
-#     a = DealEncrypt.crypto_encrypt("aa123456")
-#     print(a)
-#     b = DealEncrypt.crypto_decrypt(a)
-#     print(b)

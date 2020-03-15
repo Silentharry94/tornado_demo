@@ -6,12 +6,12 @@
 # @File    : url.py
 # @Desc    : 路由文件
 
-from urls import user_url
+from urls import hello_url
 
 
 def handlers_loads():
     handlers = []
 
-    handlers.extend(user_url.router)
+    handlers.extend(hello_url.router)
 
     return handlers

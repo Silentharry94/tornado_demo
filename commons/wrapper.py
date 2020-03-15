@@ -10,65 +10,73 @@ import traceback
 
 from jsonschema import Draft4Validator, ValidationError
 
+from commons.constant import Constant
 from commons.initlog import logging
+from commons.status_code import *  # noqa
 from utils.request_util import ReturnData
 
 
-def parameter_check(schema, check=True):
+def parameter_check(schema, valid_check=False):
     def validate(func):
         async def wrapper(self, *args, **kwargs):
-            logging.debug("try to validate parameter, "
-                          "parameter: {}".format(self.parameter))
-            return_data = ReturnData(200)
+            logging.debug("====================================")
+            logging.debug("parameter: {}".format(self.parameter))
+            return_data = ReturnData(CODE_1)
             try:
                 Draft4Validator(schema=schema).validate(self.parameter)
             except ValidationError as e:
-                logging.warning("{}: {}".format(600, e.message))
-                return_data = ReturnData(600, e.message)
+                logging.warning("{}: {}".format(CODE_0, e.message))
+                return_data = ReturnData(CODE_0, msg=e.message)
             else:
-                logging.debug("validate parameter passed")
-                login_flag = True
-                if check:
-                    login_flag = user_check(self)
-                if login_flag:
+                flag = True
+                if valid_check:
+                    flag = valid_login(self)
+                if flag:
                     try:
                         return_data = await func(self, *args, **kwargs)
                     except BaseException:
                         logging.error(traceback.format_exc())
-                        return_data = ReturnData(500)
+                        return_data = ReturnData(CODE_0)
                 else:
-                    return_data = ReturnData(205)
+                    return_data = ReturnData(CODE_0)
             finally:
+                if isinstance(return_data, ReturnData):
+                    logging.info(
+                        "Success handlers request: {}, code: {}".format(
+                            self.request.path, return_data.code))
+                    self.write(return_data.value)
+                elif isinstance(return_data, bytes):
+                    logging.info(
+                        "Success handlers request: {}".format(self.request.path))
+                    self.write(return_data)
+                else:
+                    logging.info(
+                        "Success handlers request: {}".format(self.request.path))
+                    self.write(return_data)
+                self.finish()
+            return
+        return wrapper
+    return validate
+
+
+def no_parameter_check():
+    def validate(func):
+        async def wrapper(self, *args, **kwargs):
+            try:
+                return_data = await func(self, *args, **kwargs)
+            except BaseException:
+                logging.error(traceback.format_exc())
+                return_data = ReturnData(CODE_0)
+            if isinstance(return_data, ReturnData):
                 logging.info(
                     "Success handlers request: {}, code: {}".format(
                         self.request.path, return_data.code))
                 self.write(return_data.value)
-                self.finish()
-            return
-
-        return wrapper
-
-    return validate
-
-
-def no_parameter_check(check=True):
-    def validate(func):
-        async def wrapper(self, *args, **kwargs):
-            login_flag = True
-            if check:
-                login_flag = user_check(self)
-            if login_flag:
-                try:
-                    return_data = await func(self, *args, **kwargs)
-                except BaseException:
-                    logging.error(traceback.format_exc())
-                    return_data = ReturnData(500)
             else:
-                return_data = ReturnData(205)
-            logging.info(
-                "Success handlers request: {}, code: {}".format(
-                    self.request.path, return_data.code))
-            self.write(return_data.value)
+                logging.info(
+                    "Success handlers request: {}".format(
+                        self.request.path))
+                self.write(return_data)
             self.finish()
             return
 
@@ -77,16 +85,29 @@ def no_parameter_check(check=True):
     return validate
 
 
-def user_check(self):
-    user_id = self.parameter.get("user_id", None)
-    login_token = self.parameter.get("token", None)
-    if not user_id or not login_token:
-        logging.debug("请确保传入user_id和token")
-        return False
-    key = "".join([self.channel, user_id])
-    token = self._redis.get(key)
-    if not token or login_token != token:
-        logging.debug("token失效，请重新登录")
-        return False
-    else:
-        return True
+def valid_login(self):
+    """
+    redis_key: channel+uid
+    :param self:
+    :return:
+    """
+    check_params = ("device", "channel", "uid", "token")
+    flag = False
+
+    device = self.parameter["device"]
+    channel = self.parameter["channel"]
+    uid = self.parameter["uid"]
+    login_token = self.parameter["token"]
+    redis_key = "".join([channel, uid])
+    redis_token = self._redis.get(redis_key)
+    if not login_token:
+        logging.debug("please confirm post token")
+        return flag
+    if not redis_token or login_token != redis_token:
+        logging.debug("token invalid or token does not exist")
+        return flag
+    if device not in Constant.DEVICE:
+        logging.debug("Unrecognized device")
+        return flag
+    flag = True
+    return flag

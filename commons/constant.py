@@ -19,34 +19,35 @@ class Constant(object):
     BLOCK_SIZE = 16
     # base64.encodebytes(get_random_bytes(16)).strip().decode()
     ENCRYPT_KEY = 'luYg5DM8yTPXYWnijNAzpw=='
-
     # config path
     CONFIG_PATH = {
         'config': 'config.ini',
     }
-
     # config file path
     INI_PATH = make_file_path(CONFIG_PATH['config'])
 
     PROJECT_CHANNEL = "Hanley"
-    PROJECT_NAME = "这毒M药"
-    SMS_MESSAGE = "【{}】短信验证码：{}，验证码一分钟内有效"
+
+    DEVICE = {
+        "ios",
+        "android",
+        "web"
+    }
+
+    APP_DEVICE = {
+        "ios",
+        "android"
+    }
+
+    WEB_DEVICE = {
+        "web"
+    }
 
 
 class ReturnCode(object):
     CN_CODE = {
         0: "错误返回",
-        200: "成功返回",
-        201: "",
-        202: "该手机号已注册",
-        203: "账户不存在，请先注册",
-        204: "登陆密码错误，请输入正确密码",
-        205: "请先登录",
-        206: "请输入账号密码",
-        401: "验证码已失效",
-        402: "验证码不正确",
-        500: "程序错误，请联系开发人员",
-        600: "传入参数错误",
+        1: "成功返回"
     }
 
 

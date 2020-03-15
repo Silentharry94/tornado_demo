@@ -12,7 +12,9 @@ import sys
 from loguru import logger
 
 current_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
 infolog_path = os.path.join(current_path, "logs")
+warning_path = os.path.join(infolog_path, "warning")
 errorlog_path = os.path.join(infolog_path, "errors")
 debuylog_path = os.path.join(infolog_path, "debugs")
 
@@ -32,6 +34,15 @@ config = {
             "level": "DEBUG",
             "enqueue": True,
             "backtrace": True,
+            "format": _format_str
+        },
+        {
+            "sink": "%s/warning_{time:YYYYMMDD}.log" % warning_path,
+            "level": "WARNING",
+            "enqueue": True,
+            "backtrace": True,
+            "rotation": "00:00",
+            "retention": "30 days",
             "format": _format_str
         },
         {

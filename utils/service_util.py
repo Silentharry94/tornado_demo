@@ -5,6 +5,3 @@
 # @Author  : Hanley
 # @File    : service_util.py
 # @Desc    :
-from pprint import pprint
-
-pprint("zz")

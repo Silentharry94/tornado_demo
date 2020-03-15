@@ -67,6 +67,7 @@ class MongodbConnect(object):
 
 
 class RetryConnectMysql(ReconnectMixin, PooledMySQLDatabase):
+
     _instance = None
 
     @staticmethod
@@ -77,40 +78,37 @@ class RetryConnectMysql(ReconnectMixin, PooledMySQLDatabase):
                 database=config["database"],
                 max_connections=int(config['max_connections']),
                 stale_timeout=int(config['timeout']),
+                timeout=int(config['timeout']),
                 host=config['host'],
                 user=config['user'],
                 password=DealEncrypt.crypto_decrypt(config["password"]),
                 port=int(config['port'])
             )
-            logging.debug("success connect mysql: "
-                          "{}:{}".format(config["host"], config["port"]))
-
         return RetryConnectMysql._instance
 
 
 @Singleton
-class RedisConnect():
+class RedisConnect(object):
 
     def __init__(self):
         config_dict = Common.get_config_value('redis')
-        self.host = config_dict["host"]
-        self.port = int(config_dict["port"])
-        self.db = config_dict['db']
+        self.kwags = {
+            "host": config_dict["host"],
+            "port": config_dict["port"],
+            "db": config_dict["db"],
+            "decode_responses": True
+        }
+        if config_dict.get("password"):
+            self.kwags["password"] = DealEncrypt.crypto_decrypt(config_dict["password"])
         self.retry = int(config_dict["retry"])
         self.client = self.connect_redis()
 
     def connect_redis(self):
 
         r, i = None, 0
-
         while i < self.retry:
             try:
-                pool = redis.ConnectionPool(
-                    host=self.host,
-                    port=self.port,
-                    db=self.db,
-                    decode_responses=True
-                )
+                pool = redis.ConnectionPool(**self.kwags)
                 r = redis.Redis(connection_pool=pool, decode_responses=True)
                 if not r:
                     logging.debug("第[%d]连接失败，继续" % i)
@@ -121,5 +119,4 @@ class RedisConnect():
                 logging.error(traceback.format_exc())
                 time.sleep(1)
             i += 1
-
         return r
