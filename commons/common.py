@@ -301,8 +301,3 @@ class CJsonEncoder(json.JSONEncoder):
             return obj.strftime("%Y-%m-%d")
         else:
             return json.JSONEncoder.default(self, obj)
-
-
-from pprint import pprint
-
-pprint(GenerateRandom.generate_random_color())

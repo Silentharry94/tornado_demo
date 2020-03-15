@@ -6,6 +6,7 @@
 # @File    : url.py
 # @Desc    : 路由文件
 
+from urls import error_url
 from urls import hello_url
 
 
@@ -14,4 +15,7 @@ def handlers_loads():
 
     handlers.extend(hello_url.router)
 
+    handlers.extend(error_url.router)
+
+    print(handlers)
     return handlers
