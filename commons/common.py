@@ -17,7 +17,7 @@ import re
 import time
 import traceback
 import uuid
-from collections.abc import Iterable
+from collections import OrderedDict
 from functools import wraps
 from random import choice
 from string import ascii_letters
@@ -128,10 +128,10 @@ class Common(object):
                         _dict[k] = "{:.2f}".format(float(_dict[k]))
                     except BaseException:
                         continue
-                elif isinstance(_dict[k], Iterable):
+                elif isinstance(_dict[k], list):
                     _dict[k] = type(_dict[k])([cls.format_decimal(k) for k in _dict[k]])
                 else:
-                    return _dict
+                    continue
         return _dict
 
     @classmethod
@@ -146,7 +146,7 @@ class Common(object):
             except BaseException:
                 pass
             return data
-        if isinstance(data, Iterable):
+        if isinstance(data, list):
             return type(data)([cls.format_decimal(k) for k in data])
         return data
 
@@ -175,6 +175,12 @@ class Common(object):
                 return "%s%s" % (h, ampm)
         else:
             raise ValueError("Wrong parameter to this function")
+
+    @staticmethod
+    def set_list_dict(data: list, key):
+        b = OrderedDict()
+        _ = [b.setdefault(item[key], {**item}) for item in data]
+        return list(b.values())
 
 
 class GenerateRandom(object):
