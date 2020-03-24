@@ -15,11 +15,11 @@ import redis
 from playhouse.pool import PooledMySQLDatabase
 from playhouse.shortcuts import ReconnectMixin
 
-from commons.common import Common, DealEncrypt, Singleton
+from commons.common import Common, DealEncrypt, singleton
 from commons.initlog import logging
 
 
-@Singleton
+@singleton
 class MongodbConnect(object):
 
     def __init__(self):
@@ -87,7 +87,7 @@ class RetryConnectMysql(ReconnectMixin, PooledMySQLDatabase):
         return RetryConnectMysql._instance
 
 
-@Singleton
+@singleton
 class RedisConnect(object):
 
     def __init__(self):

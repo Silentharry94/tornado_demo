@@ -32,13 +32,13 @@ from commons.initlog import logging
 from commons.status_code import *
 
 
-def Singleton(cls):
+def singleton(cls):
     _instance = {}
 
     @wraps(cls)
-    def _singleton(*args, **kargs):
+    def _singleton(*args, **kwargs):
         if cls not in _instance:
-            _instance[cls] = cls(*args, **kargs)
+            _instance[cls] = cls(*args, **kwargs)
         return _instance[cls]
 
     return _singleton
