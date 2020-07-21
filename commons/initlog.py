@@ -37,33 +37,6 @@ config = {
             "format": _format_str
         },
         {
-            "sink": "%s/warning_{time:YYYYMMDD}.log" % warning_path,
-            "level": "WARNING",
-            "enqueue": True,
-            "backtrace": True,
-            "rotation": "00:00",
-            "retention": "30 days",
-            "format": _format_str
-        },
-        {
-            "sink": "%s/info_{time:YYYYMMDD}.log" % infolog_path,
-            "level": "INFO",
-            "enqueue": True,
-            "backtrace": True,
-            "rotation": "00:00",
-            "retention": "30 days",
-            "format": _format_str
-        },
-        {
-            "sink": "%s/error_{time:YYYYMMDD}.log" % errorlog_path,
-            "level": "ERROR",
-            "enqueue": True,
-            "backtrace": True,
-            "rotation": "00:00",
-            "retention": "30 days",
-            "format": _format_str
-        },
-        {
             "sink": "%s/debug_{time:YYYYMMDD}.log" % debuylog_path,
             "level": "DEBUG",
             "enqueue": True,

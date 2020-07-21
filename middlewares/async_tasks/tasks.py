@@ -9,23 +9,22 @@
 
 from __future__ import absolute_import, unicode_literals
 
-from celery_once import QueueOnce
+import os
+import sys
 
-from commons.initlog import logging
+proPath = os.path.dirname(
+    os.path.dirname(
+        os.path.dirname(
+            os.path.abspath(__file__))))  # noqa
+sys.path.append(proPath)
 from .celeryapp import app
 
 
-class MyTask(QueueOnce):
-    def on_success(self, retval, task_id, args, kwargs):
-        return super(MyTask, self).on_success(retval, task_id, args, kwargs)
-
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        logging.debug('task fail, reason: {0}, task_id - {1}, '
-                      'args - {2}, kwargs - {3}, einfo - {4}'.format(
-            exc, task_id, args, kwargs, einfo))
-        return super(MyTask, self).on_failure(exc, task_id, args, kwargs, einfo)
-
-
-@app.task(base=MyTask, once={'graceful': True})
+@app.task
 def async_method(parameter):
+    return parameter
+
+
+@app.task
+def crontab_method(parameter):
     return parameter

@@ -6,19 +6,16 @@
 # @File    : server.py
 # @Desc    : 项目启动文件
 
-import time
-
 import tornado.web
 from tornado import httpserver, ioloop
+from tornado.httpclient import AsyncHTTPClient
 from tornado.options import define, options
 
 from commons.initlog import logging
 from urls.url import handlers_loads
-from utils.database_util import (
-    RedisConnect
-)
 
-define("port", default=1212, type=int)
+AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient', max_clients=1000)
+define("port", default=8090, type=int)
 
 _settings = {
     "cookie_secret": "p4Qy1mcwQJiSOAytobquL3YDYuXDkkcYobmUWsaBuoo",
@@ -36,14 +33,7 @@ class Application(tornado.web.Application):
         super().__init__(handlers_loads(), **_settings)
 
     def init_database(self):
-        _redis = RedisConnect().client
-        _redis.set("start_tornado_demo_time", time.strftime("%Y-%m-%d %X"))
-        # _mongo = MongodbConnect().client
-        # _mysql = RetryConnectMysql.connect_mysql()
-        # _mysql.connect()
-        # logging.debug("success connect mysql: {}:{}".format(
-        #     _mysql.connect_params["host"],
-        #     _mysql.connect_params["port"]))
+        pass
 
 
 def log_request(handler):

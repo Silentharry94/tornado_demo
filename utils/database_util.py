@@ -19,6 +19,9 @@ from commons.common import Common, DealEncrypt, singleton
 from commons.initlog import logging
 
 
+# from playhouse.shortcuts import RetryOperationalError   #2.8.0 <= peewee <=2.10.2
+
+
 @singleton
 class MongodbConnect(object):
 

@@ -179,7 +179,7 @@ class Common(object):
     @staticmethod
     def set_list_dict(data: list, key):
         b = OrderedDict()
-        _ = [b.setdefault(item[key], {**item}) for item in data]
+        _ = [b.setdefault(item[key], item[key]) for item in data]
         return list(b.values())
 
 
