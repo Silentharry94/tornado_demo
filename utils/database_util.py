@@ -6,6 +6,7 @@
 # @File    : database_util.py
 # @Desc    : 数据库连接基础文件
 
+
 import time
 import traceback
 from urllib.parse import quote_plus
@@ -17,9 +18,6 @@ from playhouse.shortcuts import ReconnectMixin
 
 from commons.common import Common, DealEncrypt, singleton
 from commons.initlog import logging
-
-
-# from playhouse.shortcuts import RetryOperationalError   #2.8.0 <= peewee <=2.10.2
 
 
 @singleton
@@ -35,6 +33,7 @@ class MongodbConnect(object):
             self.password = DealEncrypt.crypto_decrypt(config["password"])
         else:
             self.password = None
+        self.uri = config.get("uri", None)
         self.database = config.get("database", None)
         self.client = self.connect_mongodb()
 
@@ -61,16 +60,17 @@ class MongodbConnect(object):
         else:
             url = "".join([url, domain])
 
+        if self.uri:
+            url = self.uri
         client = pymongo.MongoClient(url, serverSelectionTimeoutMS=5000)
-        host, port = client.address
-        logging.debug("success connect mongodb: "
-                      "{}:{}".format(host, port))
+        # host, port = client.address
+        # logging.debug("success connect mongodb: "
+        #               "{}:{}".format(host, port))
 
         return client[self.database] if self.database is not None else client
 
 
 class RetryConnectMysql(ReconnectMixin, PooledMySQLDatabase):
-
     _instance = None
 
     @staticmethod
@@ -109,6 +109,7 @@ class RedisConnect(object):
     def connect_redis(self):
 
         r, i = None, 0
+
         while i < self.retry:
             try:
                 pool = redis.ConnectionPool(**self.kwags)
@@ -122,4 +123,5 @@ class RedisConnect(object):
                 logging.error(traceback.format_exc())
                 time.sleep(1)
             i += 1
+
         return r

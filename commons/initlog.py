@@ -4,22 +4,19 @@
 # @Time    : 2019/12/19 下午4:21
 # @Author  : Hanley
 # @File    : initlog.py
-# @Desc    : 日志模块
+# @Desc    :
 
 import os
 import sys
 
 from loguru import logger
 
+from commons.common import singleton
+
 current_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-
-infolog_path = os.path.join(current_path, "logs")
-warning_path = os.path.join(infolog_path, "warning")
-errorlog_path = os.path.join(infolog_path, "errors")
-debuylog_path = os.path.join(infolog_path, "debugs")
-
-_format_str = "{time:YYYY-MM-DD at HH:mm:ss, SSS} " \
-              "| {level} | {name} | {function} | {line} | {message}"
+applog_path = os.path.join(current_path, "log")
+_format_str = "{time:YYYY-MM-DD HH:mm:ss} " \
+              "| {level} | {name} | {function} | {line} | {message} "
 
 config = {
     "handlers": [
@@ -37,7 +34,34 @@ config = {
             "format": _format_str
         },
         {
-            "sink": "%s/debug_{time:YYYYMMDD}.log" % debuylog_path,
+            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
+            "level": "INFO",
+            "enqueue": True,
+            "backtrace": True,
+            "rotation": "00:00",
+            "retention": "30 days",
+            "format": _format_str
+        },
+        {
+            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
+            "level": "WARNING",
+            "enqueue": True,
+            "backtrace": True,
+            "rotation": "00:00",
+            "retention": "30 days",
+            "format": _format_str
+        },
+        {
+            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
+            "level": "ERROR",
+            "enqueue": True,
+            "backtrace": True,
+            "rotation": "00:00",
+            "retention": "30 days",
+            "format": _format_str
+        },
+        {
+            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
             "level": "DEBUG",
             "enqueue": True,
             "backtrace": True,
@@ -49,14 +73,12 @@ config = {
 }
 
 
+@singleton
 class MyLog(object):
-    mylog = None
 
-    def __new__(cls, *args, **kwargs):
-        if cls.mylog is None:
-            logger.configure(**config)
-            cls.mylog = logger
-        return cls.mylog
+    def __init__(self):
+        logger.configure(**config)
+        self.client = logger
 
 
-logging = MyLog()
+logging = MyLog().client

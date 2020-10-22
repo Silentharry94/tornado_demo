@@ -17,14 +17,9 @@ proPath = os.path.dirname(
         os.path.dirname(
             os.path.abspath(__file__))))  # noqa
 sys.path.append(proPath)
-from .celeryapp import app
+from .app import app
 
 
 @app.task
-def async_method(parameter):
-    return parameter
-
-
-@app.task
-def crontab_method(parameter):
+def monitor(parameter):
     return parameter

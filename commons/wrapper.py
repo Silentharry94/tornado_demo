@@ -17,13 +17,16 @@ from commons.status_code import *
 from utils.request_util import ReturnData
 
 
-def parameter_check(schema, validate_login=True):
+def parameter_check(schema, loginCheck=True):
     def validate(func):
         async def wrapper(self, *args, **kwargs):
             logging.debug("====================================")
             logging.debug("parameter: {}".format(self.parameter))
             return_data = ReturnData(CODE_1)
-            if validate_login and not login_check(self):
+            flag = True
+            if loginCheck:
+                flag = login_check(self)
+            if not flag:
                 return_data = ReturnData(CODE_0)
                 self.write(return_data.value)
                 self.finish()
@@ -52,19 +55,27 @@ def parameter_check(schema, validate_login=True):
                     self.write(return_data)
                 self.finish()
             return
+
         return wrapper
+
     return validate
 
 
-def no_parameter_check(validate_login=True):
+def no_parameter_check(loginCheck=True):
     def validate(func):
         async def wrapper(self, *args, **kwargs):
+            logging.debug(f"====================================")
             logging.debug("parameter: {}".format(self.parameter))
-            if validate_login and not login_check(self):
+
+            flag = True
+            if loginCheck:
+                flag = login_check(self)
+            if not flag:
                 return_data = ReturnData(CODE_0)
                 self.write(return_data.value)
                 self.finish()
                 return
+
             try:
                 return_data = await func(self, *args, **kwargs)
             except BaseException:
@@ -104,24 +115,32 @@ def login_check(self):
     :param self:
     :return:
     """
-    checkArgs = ("device", "channel", "uid", "token", "real_host")
-    for arg in checkArgs:
-        if arg not in self.parameter:
-            return False
-    device = self.parameter["device"]
+    flag = False
+    if "device" not in self.parameter:
+        return flag
+    if "channel" not in self.parameter:
+        return flag
+    if "uid" not in self.parameter:
+        return flag
+    if "token" not in self.parameter:
+        return flag
+    if "domain" not in self.parameter:
+        return flag
+    device = self.parameter.get("device")
     channel = self.parameter["channel"]
     uid = self.parameter["uid"]
     login_token = self.parameter["token"]
-    domain = self.parameter["real_host"]
+    domain = self.parameter["domain"]
     key = "".join([domain, channel, uid])
     token = self._redis.get(key)
     if not login_token:
         logging.debug("please confirm post token")
-        return False
+        return flag
     if not token or login_token != token:
         logging.debug("token invalid or token does not exist")
-        return False
+        return flag
     if device not in Constant.DEVICE:
         logging.debug("Unrecognized device")
-        return False
-    return True
+        return flag
+    flag = True
+    return flag

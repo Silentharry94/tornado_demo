@@ -44,7 +44,6 @@ def singleton(cls):
     return _singleton
 
 
-
 class Common(object):
 
     @staticmethod
@@ -151,42 +150,58 @@ class Common(object):
         return data
 
     @staticmethod
-    def format_time_ampm(time_or_datetime):
-        if isinstance(time_or_datetime, datetime.datetime):
-            h = int(time_or_datetime.strftime('%I'))
-            ampm = time_or_datetime.strftime('%p').lower()
-            if time_or_datetime.minute:
-                m = time_or_datetime.strftime('%M')
-                return "%s:%s%s" % (h, m, ampm)
-            else:
-                return "%s%s" % (h, ampm)
-        elif isinstance(time_or_datetime, (tuple, list)) and len(time_or_datetime) >= 2:
-            h = time_or_datetime[0]
-            m = time_or_datetime[1]
-            assert isinstance(h, int), type(h)
-            assert isinstance(m, int), type(m)
-            ampm = 'am'
-            if h > 12:
-                ampm = 'pm'
-                h -= 12
-            if m:
-                return "%s:%s%s" % (h, m, ampm)
-            else:
-                return "%s%s" % (h, ampm)
-        else:
-            raise ValueError("Wrong parameter to this function")
-
-    @staticmethod
     def set_list_dict(data: list, key):
         b = OrderedDict()
-        _ = [b.setdefault(item[key], item[key]) for item in data]
+        _ = [b.setdefault(item[key], {**item}) for item in data]
         return list(b.values())
+
+    @staticmethod
+    def cp_file(source_file, target_file):
+        sf = open(source_file)
+        tf = open(target_file, 'w')
+        while True:
+            data = sf.read(4069)
+            if not data:
+                break
+            tf.write(data)
+        sf.close()
+        tf.close()
+
+    @staticmethod
+    def encode_multipart_formdata(fields, files):
+        # 封装multipart/form-data post请求
+        boundary = b'WebKitFormBoundaryh4QYhLJ34d60s2tD'
+        boundary_u = boundary.decode('utf-8')
+        crlf = b'\r\n'
+        l = []
+        for (key, value) in fields:
+            l.append(b'--' + boundary)
+            temp = 'Content-Disposition: form-data; name="%s"' % key
+            l.append(temp.encode('utf-8'))
+            l.append(b'')
+            if isinstance(value, str):
+                l.append(value.encode())
+            else:
+                l.append(value)
+        key, filename, value = files
+        l.append(b'--' + boundary)
+        temp = 'Content-Disposition: form-data; name="%s"; filename="%s"' % (key, filename)
+        l.append(temp.encode('utf-8'))
+        temp = 'Content-Type: img/%s' % filename.split('.')[1]
+        l.append(temp.encode('utf-8'))
+        l.append(b'')
+        l.append(value)
+        l.append(b'--' + boundary + b'--')
+        l.append(b'')
+        body = crlf.join(l)
+        content_type = 'multipart/form-data; boundary=%s' % boundary_u
+        return content_type, body
 
 
 class GenerateRandom(object):
 
     @staticmethod
-    def generate_random_id() -> str:
+    def generate_random_digit() -> str:
         now = datetime.datetime.now().strftime("%Y%m%d")
         unix = str(time.time()).replace('.', "")[-10:]
         rand_ind = random.randint(1000, 9999)
