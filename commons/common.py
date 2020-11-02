@@ -226,7 +226,6 @@ class GenerateRandom(object):
     def generate_random_color():
         def dec2hex(d):
             return "%02X" % d
-
         return '#%s%s%s' % (
             dec2hex(random.randint(0, 255)),
             dec2hex(random.randint(0, 255)),

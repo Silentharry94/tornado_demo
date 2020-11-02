@@ -14,7 +14,7 @@ from loguru import logger
 from commons.common import singleton
 
 current_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-applog_path = os.path.join(current_path, "log")
+log_path = os.path.join(current_path, "log")
 _format_str = "{time:YYYY-MM-DD HH:mm:ss} " \
               "| {level} | {name} | {function} | {line} | {message} "
 
@@ -34,7 +34,7 @@ config = {
             "format": _format_str
         },
         {
-            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
+            "sink": "%s/{time:YYYYMMDD}.log" % log_path,
             "level": "INFO",
             "enqueue": True,
             "backtrace": True,
@@ -43,7 +43,7 @@ config = {
             "format": _format_str
         },
         {
-            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
+            "sink": "%s/{time:YYYYMMDD}.log" % log_path,
             "level": "WARNING",
             "enqueue": True,
             "backtrace": True,
@@ -52,7 +52,7 @@ config = {
             "format": _format_str
         },
         {
-            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
+            "sink": "%s/{time:YYYYMMDD}.log" % log_path,
             "level": "ERROR",
             "enqueue": True,
             "backtrace": True,
@@ -61,7 +61,7 @@ config = {
             "format": _format_str
         },
         {
-            "sink": "%s/{time:YYYYMMDD}.log" % applog_path,
+            "sink": "%s/{time:YYYYMMDD}.log" % log_path,
             "level": "DEBUG",
             "enqueue": True,
             "backtrace": True,
