@@ -14,7 +14,12 @@ def make_file_path(config_name: str) -> str:
     return os.path.join(curr_dir, config_name)
 
 
-class Constant(object):
+class RedisKey:
+    pass
+
+
+class Constant:
+    PROJECT = "demo"
     # encrypt config
     BLOCK_SIZE = 16
 
@@ -22,6 +27,7 @@ class Constant(object):
     ENCRYPT_KEY = 'luYg5DM8yTPXYWnijNAzpw=='
 
     # config file path
+    YAML_CONFIG = make_file_path('config.yaml')
     INI_PATH = make_file_path('config.ini')
 
     PROJECT_CHANNEL = "Hanley"
@@ -39,28 +45,12 @@ class Constant(object):
     COOKIE_UID = "{}_demo_uid"
     COOKIE_TOKEN = "{}_demo_token"
 
+    # request
+    COMMON_REQUEST_PARAM = [
+        "client_id", "request_id", "start_time",
+    ]
     # external request
     TIME_OUT = 3
     MID_TIME_OUT = 10
     LONG_TIME_OUT = 30
     JSON_HEADERS = {"Content-Type": "application/json"}
-
-    # apply status
-    APPLY_STATUS = {
-        0: "错误返回",
-        21000: "Store无法读取你提供的JSON数据",
-        21002: "收据数据不符合格式",
-        21003: "收据无法被验证",
-        21004: "你提供的共享密钥和账户的共享密钥不一致",
-        21005: "收据服务器当前不可用",
-        21006: "收据是有效的，但订阅服务已经过期。当收到这个信息时，解码后的收据信息也包含在返回内容中",
-        21007: "收据信息是测试用（sandbox），但却被发送到产品环境中验证",
-        21008: "收据信息是产品环境中使用，但却被发送到测试环境中验证"
-    }
-
-
-class ReturnCode(object):
-    CN_CODE = {
-        0: "错误返回",
-        1: "成功返回"
-    }

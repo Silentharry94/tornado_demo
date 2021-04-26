@@ -1,6 +1,4 @@
-### Just for fun
-
-### Like a baby
+### Tornado Demo
 
 ### 项目启动命令
 cd $project;python3 server.py --env=$env --port=$port

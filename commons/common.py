@@ -6,30 +6,70 @@
 # @File    : common.py
 # @Desc    : 公共方法文件
 
+import asyncio
 import base64
 import configparser
 import datetime
+import fcntl
+import filecmp
+import functools
 import hashlib
 import json
 import os
+import pathlib
 import random
 import re
 import time
 import traceback
 import uuid
-from collections import OrderedDict
 from functools import wraps
 from random import choice
 from string import ascii_letters
 
-import ujson
+import yaml
 from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
-from tornado.httpclient import AsyncHTTPClient, HTTPClient
+from aiohttp import ClientSession, TCPConnector
+from cryptography.fernet import Fernet
+from requests import Session, adapters
 
 from commons.constant import Constant
 from commons.initlog import logging
-from commons.status_code import *
+
+
+def str_now(): return time.strftime("%Y-%m-%d %X")
+
+
+def datetime_now(): return datetime.datetime.now()
+
+
+def perf_time(): return time.perf_counter()
+
+
+
+def cost_time(func):
+    def _cost(func_name, start_time):
+        end_time = perf_time()
+        cost = (end_time - start_time) * 1000
+        logging.debug(f">>>function: {func_name} duration: {cost}ms<<<")
+        return
+
+    if asyncio.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            start_time = perf_time()
+            return_data = await func(*args, **kwargs)
+            _cost(func.__name__, start_time)
+            return return_data
+    else:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = perf_time()
+            return_data = func(*args, **kwargs)
+            _cost(func.__name__, start_time)
+            return return_data
+    return wrapper
 
 
 def singleton(cls):
@@ -47,7 +87,15 @@ def singleton(cls):
 class Common(object):
 
     @staticmethod
-    def get_config_value(section=None, file_path=Constant.INI_PATH) -> dict:
+    def yaml_config(key=None, file_path=Constant.YAML_CONFIG):
+        with open(file_path, 'r') as f:
+            config = yaml.safe_load(f)
+        if key:
+            return config.get(key)
+        return config
+
+    @staticmethod
+    def ini_config(section=None, file_path=Constant.INI_PATH) -> dict:
         config = configparser.ConfigParser()
         config.read(file_path)
         if isinstance(section, str):
@@ -70,55 +118,22 @@ class Common(object):
 
     @staticmethod
     def validate_phone(phone_number: str) -> bool:
-        _pattern = r"13\d{9}|14\d{9}|15\d{9}|16\d{9}|17\d{9}|18\d{9}|19\d{9}"
-        pattern = re.compile(_pattern)
-        if len(phone_number) != 11:
-            return False
+        _mobile_pattern = r"13\d{9}|14\d{9}|15\d{9}|16\d{9}|17\d{9}|18\d{9}|19\d{9}"
+        _landline_pattern = r"^[0][1-9]{2,3}-[0-9]{5,10}$"
+
+        mobile_pattern = re.compile(_mobile_pattern)
+        landline_pattern = re.compile(_landline_pattern)
+        _check = lambda p: p.findall(phone_number)
+        if len(phone_number) == 11 and "-" not in phone_number:
+            return True if _check(mobile_pattern) else False
         else:
-            if pattern.findall(phone_number):
-                return True
-            else:
-                return False
+            return True if _check(landline_pattern) else False
 
     @staticmethod
-    def sync_fetch(req):
-        try:
-            response = HTTPClient().fetch(req)
-            try:
-                data = ujson.loads(response.body)
-            except BaseException:
-                data = response.body
-        except BaseException:
-            logging.error("route: {} return error".format(req.url))
-            logging.error(traceback.format_exc())
-            if req.method == "GET":
-                param = req.url
-            else:
-                param = ujson.loads(req.body)
-            data = {"code": CODE_0, "data": param, "msg": "外部接口调用异常"}
-            return data
-        return data
-
-    @staticmethod
-    async def async_fetch(req):
-        try:
-            response = await AsyncHTTPClient().fetch(req)
-            logging.error("res: {}".format(response))
-            try:
-                rpc_data = ujson.loads(response.body)
-            except BaseException:
-                rpc_data = response.body
-        except BaseException:
-            error_data = {"code": CODE_0, "msg": "", "data": None}
-            logging.error(traceback.format_exc())
-            return error_data
-        return rpc_data
-
-    @classmethod
-    def decimal_dict(cls, _dict: dict):
+    def decimal_dict(_dict: dict):
         for k in _dict:
             if isinstance(_dict[k], dict):
-                cls.format_decimal(_dict[k])
+                Common.format_decimal(_dict[k])
             else:
                 if isinstance(_dict[k], float):
                     _dict[k] = "{:.2f}".format(_dict[k])
@@ -128,15 +143,15 @@ class Common(object):
                     except BaseException:
                         continue
                 elif isinstance(_dict[k], list):
-                    _dict[k] = type(_dict[k])([cls.format_decimal(k) for k in _dict[k]])
+                    _dict[k] = type(_dict[k])([Common.format_decimal(k) for k in _dict[k]])
                 else:
                     continue
         return _dict
 
-    @classmethod
-    def format_decimal(cls, data):
+    @staticmethod
+    def format_decimal(data):
         if isinstance(data, dict):
-            return cls.decimal_dict(data)
+            return Common.decimal_dict(data)
         if isinstance(data, float):
             return "{:.2f}".format(data)
         if isinstance(data, str):
@@ -146,26 +161,47 @@ class Common(object):
                 pass
             return data
         if isinstance(data, list):
-            return type(data)([cls.format_decimal(k) for k in data])
+            return type(data)([Common.format_decimal(k) for k in data])
         return data
 
     @staticmethod
-    def set_list_dict(data: list, key):
-        b = OrderedDict()
-        _ = [b.setdefault(item[key], {**item}) for item in data]
-        return list(b.values())
+    def cp_file(source_file, target_file):
+        if filecmp.cmp(target_file, source_file):
+            return
+        with open(source_file, 'r') as sf:
+            with open(target_file, 'w') as tf:
+                fcntl.lockf(tf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                while True:
+                    data = sf.read(4069)
+                    if not data:
+                        break
+                    tf.write(data)
 
     @staticmethod
-    def cp_file(source_file, target_file):
-        sf = open(source_file)
-        tf = open(target_file, 'w')
-        while True:
-            data = sf.read(4069)
-            if not data:
-                break
-            tf.write(data)
-        sf.close()
-        tf.close()
+    def init_config_file(env: str):
+        """
+        项目配置文件环境切换
+        :param env:
+        :return:
+        """
+        if env not in ("prod", "dev", "local"):
+            return
+        FILE_MAP = {
+            'prod': 'config_prod.yaml',
+            'dev': "config_dev.yaml",
+            'local': 'config_local.yaml'
+        }
+        source_file = os.path.join(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.abspath(__file__))), FILE_MAP.get(env))
+        target_file = os.path.join(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.abspath(__file__))), 'config.yaml')
+        not os.path.exists(target_file) and pathlib.Path(target_file).touch()
+
+        Common.cp_file(source_file, target_file)
 
     @staticmethod
     def encode_multipart_formdata(fields, files):
@@ -222,18 +258,20 @@ class GenerateRandom(object):
     def random_string(length=10):
         return ''.join(choice(ascii_letters) for _ in range(length))
 
-    @staticmethod
-    def generate_random_color():
-        def dec2hex(d):
-            return "%02X" % d
-        return '#%s%s%s' % (
-            dec2hex(random.randint(0, 255)),
-            dec2hex(random.randint(0, 255)),
-            dec2hex(random.randint(0, 255)),
-        )
+
+def catch_exc(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.error(e)
+            logging.error(traceback.format_exc())
+
+    return wrapper
 
 
-class DealEncrypt(object):
+class Encrypt(object):
 
     # base64加密
     @staticmethod
@@ -263,61 +301,218 @@ class DealEncrypt(object):
 
     # hashlib md5加密
     @staticmethod
-    def hash_md5_encrypt(data: (str, bytes)) -> str:
+    def hash_md5_encrypt(data: (str, bytes), salt=None) -> str:
         if isinstance(data, str):
             data = data.encode('utf-8')
         md5 = hashlib.md5()
-        md5.update(Constant.ENCRYPT_KEY.encode('utf-8'))
+        if salt:
+            if isinstance(salt, str):
+                salt = salt.encode('utf-8')
+            md5.update(salt)
         md5.update(data)
         return md5.hexdigest()
 
     # hashlib sha1加密
     @staticmethod
-    def hash_sha1_encrypt(data: (str, bytes)) -> str:
+    def hash_sha1_encrypt(data: (str, bytes), salt=None) -> str:
         if isinstance(data, str):
             data = data.encode('utf-8')
         md5 = hashlib.sha1()
-        md5.update(Constant.ENCRYPT_KEY.encode('utf-8'))
+        if salt:
+            if isinstance(salt, str):
+                salt = salt.encode('utf-8')
+            md5.update(salt)
         md5.update(data)
         return md5.hexdigest()
 
     # hashlib sha256加密
     @staticmethod
-    def hash_sha256_encrypt(data: (str, bytes)) -> str:
+    def hash_sha256_encrypt(data: (str, bytes), salt=None) -> str:
         if isinstance(data, str):
             data = data.encode('utf-8')
         md5 = hashlib.sha256()
-        md5.update(Constant.ENCRYPT_KEY.encode('utf-8'))
+        if salt:
+            if isinstance(salt, str):
+                salt = salt.encode('utf-8')
+            md5.update(salt)
         md5.update(data)
         return md5.hexdigest()
 
+    @staticmethod
+    def generate_secret(block_size=16):
+        return base64.encodebytes(
+            get_random_bytes(
+                block_size)).strip().decode()
+
+    @staticmethod
+    def generate_fernet_key():
+        return Fernet.generate_key()
+
+    @staticmethod
+    def build_sign(dict_param: dict) -> str:
+        """
+        生成字典参数签名
+        """
+        param_list = sorted(dict_param.keys())
+        string = ""
+        for param in param_list:
+            if dict_param[param]:
+                string += f"{param}={dict_param[param]}&"
+        md5_sign = Encrypt.hash_md5_encrypt(string)
+        return md5_sign.upper()
+
     # Crypto AES加密
     @staticmethod
-    def crypto_encrypt(data: (str, bytes)) -> str:
-        """
-        data大于16位，返回64位字符；小于16位，返回32位字符
-        :param data:
-        :return:
-        """
+    @catch_exc
+    def crypto_encrypt(data: (str, bytes), secret: str, block_size=16) -> str:
+        def _pad(pending_bytes) -> bytes:
+            if len(pending_bytes) % 16 != 0:
+                plaintext = pad(pending_bytes, block_size)
+                return _pad(plaintext)
+            else:
+                plaintext = pending_bytes
+            return plaintext
+
         if isinstance(data, str):
             data = data.encode('utf-8')
-        cipher = AES.new(Constant.ENCRYPT_KEY.encode('utf8'), AES.MODE_ECB)
-        msg = cipher.encrypt(pad(data, Constant.BLOCK_SIZE))
+        cipher = AES.new(secret.encode('utf-8'), AES.MODE_ECB)
+        encrypt_plaintext = _pad(data)
+        msg = cipher.encrypt(encrypt_plaintext)
         return msg.hex()
 
     # Crypto AES解密
     @staticmethod
-    def crypto_decrypt(data: str) -> str:
-        decipher = AES.new(Constant.ENCRYPT_KEY.encode('utf8'), AES.MODE_ECB)
+    @catch_exc
+    def crypto_decrypt(data: str, secret: str, block_size=16) -> str:
+        decipher = AES.new(secret.encode('utf-8'), AES.MODE_ECB)
         msg_dec = decipher.decrypt(bytes.fromhex(data))
-        return unpad(msg_dec, Constant.BLOCK_SIZE).decode()
+        result = unpad(msg_dec, block_size).decode()
+        return result
+
+    @staticmethod
+    def make_encrypt(parameter: dict, secret: str, sign_key='encrypt') -> dict:
+        """
+        支付加密
+        :param parameter: 支付请求参数
+        :param secret: 密钥
+        :param sign_key: 加密字段名
+        encrypt（加密字符）
+        :return: 携带加密后parameter
+        """
+        _sign = Encrypt.build_sign(parameter)
+        encrypt_sign = Encrypt.crypto_encrypt(_sign, secret)
+        parameter.setdefault(sign_key, encrypt_sign)
+        return parameter
+
+    @staticmethod
+    def make_decrypt(parameter: dict, secret: str, sign_key='encrypt') -> tuple:
+        """
+        支付解密
+        :param parameter: 支付请求参数（携带encrypt）
+        :param secret: 密钥
+        :param sign_key: 加密字段名
+        :return:
+        """
+        decrypt_encrypt = parameter.pop(sign_key, "")
+        _sign = Encrypt.build_sign(parameter)
+        decrypt = Encrypt.crypto_decrypt(decrypt_encrypt, secret)
+        if decrypt != _sign:
+            return False, parameter
+        return True, parameter
+
+    @staticmethod
+    @catch_exc
+    def set_auth_cookies(key, data):
+        '''
+        加密cookies
+        :param token:
+        :param cookies:
+        :return:
+        '''
+        f = Fernet(key)
+        cookies_json = json.dumps(data)
+        token = f.encrypt(cookies_json.encode())
+        cookies_json = token.decode()
+        return cookies_json
+
+    @staticmethod
+    @catch_exc
+    def get_auth_cookies(key, data):
+        '''
+        解密cookies
+        :param token:
+        :param cookies:
+        :return:
+        '''
+        f = Fernet(key)
+        cookie_json = f.decrypt(data.encode()).decode()
+        cookies_data = json.loads(cookie_json)
+        return cookies_data
 
 
-class CJsonEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return obj.strftime("%Y-%m-%d %H:%M:%S")
-        elif isinstance(obj, datetime.date):
-            return obj.strftime("%Y-%m-%d")
-        else:
-            return json.JSONEncoder.default(self, obj)
+class SyncClientSession(Session):
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, '_instance'):
+            cls._instance = super(SyncClientSession, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self, time_out=2, pool_num=10, pool_max_size=50, max_retries=3):
+        super(SyncClientSession, self).__init__()
+        self._time_out = time_out
+        self._pool_num = pool_num
+        self._pool_max_size = pool_max_size
+        self._max_retries = max_retries
+        self.mount("http://", adapters.HTTPAdapter(
+            pool_connections=self._pool_num,
+            pool_maxsize=self._pool_max_size,
+            max_retries=self._max_retries
+        ))
+        self.mount("https://", adapters.HTTPAdapter(
+            pool_connections=self._pool_num,
+            pool_maxsize=self._pool_max_size,
+            max_retries=self._max_retries
+        ))
+
+    def request(self, method, url, headers=None, timeout=None, **kwargs):
+        timeout = timeout or self._time_out
+        headers = headers or {}
+        if not headers.get("X-Request-ID"):
+            headers["X-Request-ID"] = uuid.uuid4().hex
+        return super().request(
+            method, url, headers=headers, timeout=timeout, **kwargs)
+
+
+class AsyncClientSession:
+    """
+    async aiohttp client
+    """
+    __slots__ = (
+        "session",
+    )
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, '_instance'):
+            cls._instance = super(AsyncClientSession, cls).__new__(cls)
+        return cls._instance
+
+    async def init_session(self) -> ClientSession:
+        tcp_connector = TCPConnector(
+            keepalive_timeout=600,
+            ssl=False,
+            limit=0,
+            limit_per_host=300,
+        )
+        self.session = ClientSession(connector=tcp_connector)
+        return self.session
+
+    async def request(self, method, url, **kwargs):
+        return await self.session.request(method, url, **kwargs)
+
+    @cost_time
+    async def fetch_json(self, method, url, **kwargs):
+        async with self.session.request(method, url, **kwargs) as response:
+            return await response.json()
+
+    async def close(self):
+        await self.session.close()

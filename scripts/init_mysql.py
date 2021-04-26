@@ -17,7 +17,7 @@ proPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # noqa
 sys.path.append(proPath)  # noqa
 import ujson
 
-from models.base import _mysql, ChannelConfig
+from models.base import _mysql
 
 
 class InsertData(threading.Thread):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# @Time    : 2019/12/25 下午6:12
+# @Time    : 2021/4/26 11:23 上午
 # @Author  : Hanley
-# @File    : rabbitmq.py
+# @File    : __init__.py.py
 # @Desc    :

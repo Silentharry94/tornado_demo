@@ -6,32 +6,12 @@
 # @File    : scheme.py
 # @Desc    : 
 
-class Scheme(object):
-    # mysql schemes
-    PEEWEE_SCHEMES = {
-        'apsw',
-        'mysql',
-        'mysql+pool',
-        'postgres',
-        'postgres+pool',
-        'postgresext',
-        'postgresql+pool',
-        'sqlite',
-        'sqliteext'
-        'sqlite+pool',
-        'sqliteext+pool',
-    }
-
-    # mongodb uri schemes
-    MONGODB_SCHEMES = {
-        'mongodb'
-    }
-
+class Schema(object):
     HELLO = {
         "type": "object",
         "properties": {
             "name": {
-                "type": "string", "examples": ["YQ"]
+                "type": "string",
             }
         },
         "required": [

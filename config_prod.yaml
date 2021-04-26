@@ -1,0 +1,31 @@
+mysql:
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: "qyGHtJBZUW"
+  database: "tornado"
+  max_connections: 16
+  timeout: 4
+
+mongo:
+  host: "127.0.0.1"
+  port: 27017
+  auth_db:
+  user:
+  password:
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  db: 1
+  retry: 3
+  password:
+  decode_responses: true
+
+rabbitmq:
+  user:
+  password:
+  host:
+  port:
+  vhost:
+
