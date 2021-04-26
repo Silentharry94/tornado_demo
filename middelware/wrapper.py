@@ -8,8 +8,6 @@
 import functools
 import traceback
 
-import asyncio
-
 from commons.common import perf_time
 from commons.initlog import logging
 from commons.status_code import *

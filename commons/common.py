@@ -47,7 +47,6 @@ def datetime_now(): return datetime.datetime.now()
 def perf_time(): return time.perf_counter()
 
 
-
 def cost_time(func):
     def _cost(func_name, start_time):
         end_time = perf_time()
