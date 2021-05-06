@@ -29,7 +29,6 @@ from string import ascii_letters
 import yaml
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-from Crypto.Util.Padding import pad, unpad
 from aiohttp import ClientSession, TCPConnector
 from cryptography.fernet import Fernet
 from requests import Session, adapters
@@ -81,6 +80,18 @@ def singleton(cls):
         return _instance[cls]
 
     return _singleton
+
+
+def catch_exc(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.error(e)
+            logging.error(traceback.format_exc())
+
+    return wrapper
 
 
 class Common(object):
@@ -160,7 +171,7 @@ class Common(object):
                 pass
             return data
         if isinstance(data, list):
-            return type(data)([Common.format_decimal(k) for k in data])
+            return list(([Common.format_decimal(k) for k in data]))
         return data
 
     @staticmethod
@@ -258,19 +269,17 @@ class GenerateRandom(object):
         return ''.join(choice(ascii_letters) for _ in range(length))
 
 
-def catch_exc(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logging.error(e)
-            logging.error(traceback.format_exc())
-
-    return wrapper
-
-
 class Encrypt(object):
+
+    @staticmethod
+    def pad(s):
+        AES_BLOCK_SIZE = 16  # Bytes
+        return s + (AES_BLOCK_SIZE - len(s) % AES_BLOCK_SIZE) * \
+               chr(AES_BLOCK_SIZE - len(s) % AES_BLOCK_SIZE)
+
+    @staticmethod
+    def unpad(s):
+        return s[:-ord(s[len(s) - 1:])]
 
     # base64加密
     @staticmethod
@@ -360,64 +369,40 @@ class Encrypt(object):
         md5_sign = Encrypt.hash_md5_encrypt(string)
         return md5_sign.upper()
 
-    # Crypto AES加密
     @staticmethod
     @catch_exc
-    def crypto_encrypt(data: (str, bytes), secret: str, block_size=16) -> str:
-        def _pad(pending_bytes) -> bytes:
-            if len(pending_bytes) % 16 != 0:
-                plaintext = pad(pending_bytes, block_size)
-                return _pad(plaintext)
-            else:
-                plaintext = pending_bytes
-            return plaintext
+    def aes_encrypt(key, data):
+        '''
+        AES的ECB模式加密方法
+        :param key: 密钥
+        :param data:被加密字符串（明文）
+        :return:密文
+        '''
+        key = key.encode('utf8')
+        # 字符串补位
+        data = Encrypt.pad(data)
+        cipher = AES.new(key, AES.MODE_ECB)
+        # 加密后得到的是bytes类型的数据，使用Base64进行编码,返回byte字符串
+        result = cipher.encrypt(data.encode())
+        encodestrs = base64.b64encode(result)
+        enctext = encodestrs.decode('utf8')
+        return enctext
 
-        if isinstance(data, str):
-            data = data.encode('utf-8')
-        cipher = AES.new(secret.encode('utf-8'), AES.MODE_ECB)
-        encrypt_plaintext = _pad(data)
-        msg = cipher.encrypt(encrypt_plaintext)
-        return msg.hex()
-
-    # Crypto AES解密
     @staticmethod
     @catch_exc
-    def crypto_decrypt(data: str, secret: str, block_size=16) -> str:
-        decipher = AES.new(secret.encode('utf-8'), AES.MODE_ECB)
-        msg_dec = decipher.decrypt(bytes.fromhex(data))
-        result = unpad(msg_dec, block_size).decode()
-        return result
-
-    @staticmethod
-    def make_encrypt(parameter: dict, secret: str, sign_key='encrypt') -> dict:
-        """
-        支付加密
-        :param parameter: 支付请求参数
-        :param secret: 密钥
-        :param sign_key: 加密字段名
-        encrypt（加密字符）
-        :return: 携带加密后parameter
-        """
-        _sign = Encrypt.build_sign(parameter)
-        encrypt_sign = Encrypt.crypto_encrypt(_sign, secret)
-        parameter.setdefault(sign_key, encrypt_sign)
-        return parameter
-
-    @staticmethod
-    def make_decrypt(parameter: dict, secret: str, sign_key='encrypt') -> tuple:
-        """
-        支付解密
-        :param parameter: 支付请求参数（携带encrypt）
-        :param secret: 密钥
-        :param sign_key: 加密字段名
-        :return:
-        """
-        decrypt_encrypt = parameter.pop(sign_key, "")
-        _sign = Encrypt.build_sign(parameter)
-        decrypt = Encrypt.crypto_decrypt(decrypt_encrypt, secret)
-        if decrypt != _sign:
-            return False, parameter
-        return True, parameter
+    def aes_decrypt(key, data):
+        '''
+        :param key: 密钥
+        :param data: 加密后的数据（密文）
+        :return:明文
+        '''
+        key = key.encode('utf8')
+        data = base64.b64decode(data)
+        cipher = AES.new(key, AES.MODE_ECB)
+        # 去补位
+        text_decrypted = Encrypt.unpad(cipher.decrypt(data))
+        text_decrypted = text_decrypted.decode('utf8')
+        return text_decrypted
 
     @staticmethod
     @catch_exc
@@ -497,9 +482,8 @@ class AsyncClientSession:
 
     async def init_session(self) -> ClientSession:
         tcp_connector = TCPConnector(
-            keepalive_timeout=600,
-            ssl=False,
-            limit=0,
+            keepalive_timeout=15,
+            limit=600,
             limit_per_host=300,
         )
         self.session = ClientSession(connector=tcp_connector)
