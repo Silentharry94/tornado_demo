@@ -17,7 +17,9 @@ class HelloService(BaseHandler):
     @uri_check()
     async def get(self):
         msg = "Hello World, It's tornado demo"
-        return ReturnData(CODE_1, msg=msg)
+        data = [i / 100 + (i + 1) / 10 for i in range(100)]
+        data.append(0.125344)
+        return ReturnData(CODE_1, data=data, msg=msg, decimal=True)
 
     async def post(self):
         await self.get()

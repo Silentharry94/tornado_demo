@@ -22,6 +22,7 @@ import re
 import time
 import traceback
 import uuid
+from decimal import Decimal
 from functools import wraps
 from random import choice
 from string import ascii_letters
@@ -146,14 +147,12 @@ class Common(object):
                 Common.format_decimal(_dict[k])
             else:
                 if isinstance(_dict[k], float):
-                    _dict[k] = "{:.2f}".format(_dict[k])
+                    _dict[k] = float(round(Decimal(_dict[k]), 2))
                 elif isinstance(_dict[k], str):
-                    try:
-                        _dict[k] = "{:.2f}".format(float(_dict[k]))
-                    except BaseException:
-                        continue
+                    if _dict[k] != "":
+                        _dict[k] = float(round(Decimal(float(_dict[k])), 2))
                 elif isinstance(_dict[k], list):
-                    _dict[k] = type(_dict[k])([Common.format_decimal(k) for k in _dict[k]])
+                    _dict[k] = list([Common.format_decimal(k) for k in _dict[k]])
                 else:
                     continue
         return _dict
@@ -163,13 +162,10 @@ class Common(object):
         if isinstance(data, dict):
             return Common.decimal_dict(data)
         if isinstance(data, float):
-            return "{:.2f}".format(data)
+            return float(round(Decimal(data), 2))
         if isinstance(data, str):
-            try:
-                data = "{:.2f}".format(float(data))
-            except BaseException:
-                pass
-            return data
+            if data != "":
+                return float(round(Decimal(float(data)), 2))
         if isinstance(data, list):
             return list(([Common.format_decimal(k) for k in data]))
         return data
