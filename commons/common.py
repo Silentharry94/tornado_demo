@@ -149,7 +149,7 @@ class Common(object):
                 if isinstance(_dict[k], float):
                     _dict[k] = float(round(Decimal(_dict[k]), 2))
                 elif isinstance(_dict[k], str):
-                    if _dict[k] != "":
+                    if _dict[k].isdigit():
                         _dict[k] = float(round(Decimal(float(_dict[k])), 2))
                 elif isinstance(_dict[k], list):
                     _dict[k] = list([Common.format_decimal(k) for k in _dict[k]])
@@ -164,8 +164,10 @@ class Common(object):
         if isinstance(data, float):
             return float(round(Decimal(data), 2))
         if isinstance(data, str):
-            if data != "":
+            if data.isdigit():
                 return float(round(Decimal(float(data)), 2))
+            else:
+                return data
         if isinstance(data, list):
             return list(([Common.format_decimal(k) for k in data]))
         return data
