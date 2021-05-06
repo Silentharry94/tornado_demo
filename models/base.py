@@ -28,7 +28,7 @@ class BaseModel(Model):
 class UriConfig(BaseModel):
     code = IntegerField(unique=True, verbose_name="接口编码")
     path = CharField(max_length=128, default="", unique=True, verbose_name="接口地址")
-    name = CharField(max_length=63, default="", unique=True, verbose_name="接口名称")
+    name = CharField(max_length=63, default="", verbose_name="接口名称")
     regex = SmallIntegerField(default=0, verbose_name="是否使用正则")
     pattern = CharField(max_length=256, default="", verbose_name="正则表达式")
     description = CharField(max_length=256, default="", verbose_name="接口描述")

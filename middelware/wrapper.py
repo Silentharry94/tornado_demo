@@ -22,8 +22,9 @@ def uri_check(schema=None):
     def validate(func):
         @functools.wraps(func)
         async def async_wrapper(self, *args, **kwargs):
-            logging.debug(f"parameter: {self.parameter}")
             return_data = ReturnData(CODE_0)
+            request_id = self._inner.get("request_id", "")
+            logging.debug(f"parameter: {self.parameter} request_id: {request_id}")
             try:
                 return_data.code = await group_check(self, schema)
                 if return_data.code == CODE_0:
@@ -33,12 +34,13 @@ def uri_check(schema=None):
                 logging.error(traceback.format_exc())
                 return_data.trace = str(e)
                 return_data.code = CODE_500
-            start_time = self._inner.get("start_time")
-            duration = (perf_time() - start_time) * 1000
-            return_data.request_id = self._inner.get("request_id", "")
-            logging.debug(f"path: {self.request.path} "
-                          f"code: {return_data.code} duration: {duration}ms")
+            return_data.request_id = request_id
             await self.finish(return_data.value)
+            self._inner["end_time"] = perf_time()
+            duration = (self._inner["end_time"] - self._inner["start_time"]) * 1000
+            logging.debug(f"path: {self.request.path}, "
+                          f"request_id: {request_id} ,"
+                          f"duration: {duration}ms")
             return
 
         return async_wrapper

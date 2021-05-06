@@ -9,12 +9,10 @@ import logging
 
 import uvloop
 from tornado import httpserver, ioloop
-from tornado.httpclient import AsyncHTTPClient
 from tornado.options import define, options
 
 from utils.sync_db import RedisConnect, MysqlConnect, MongodbConnect
 
-AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient", max_clients=1000)
 define("port", default=9376, type=int)
 define("env", default="local", type=str)
 options.parse_command_line()
@@ -55,8 +53,7 @@ def app(options):
         logging.debug(f"start {Constant.PROJECT} {options.env} success,"
                       f" at port [%s]" % options.port)
         ioloop.IOLoop.instance().start()
-    except BaseException as e:
-        logging.warning(e)
+    except BaseException:
         loop.run_until_complete(async_client.close())
         ioloop.IOLoop.instance().stop()
         logging.debug(f"{Constant.PROJECT} loop safe stop")

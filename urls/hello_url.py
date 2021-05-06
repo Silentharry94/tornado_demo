@@ -11,5 +11,5 @@ from tornado.web import url
 from handlers import helloService as hello
 
 router = [
-    url(r'/hello/world', hello.HelloService, name="test"),
+    url(r'/hello/world', hello.HelloService, name="hello world"),
 ]

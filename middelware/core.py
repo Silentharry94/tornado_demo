@@ -24,10 +24,10 @@ from scripts.init_tables import complete_table
 
 
 def log_request(handler):
-    template = ' {code} {method} '
+    template = ' {code} {summary} '
     data = {
         "code": handler.get_status(),
-        "method": handler._request_summary(),
+        "summary": handler._request_summary(),
     }
     logging.info(template.format(**data))
 
