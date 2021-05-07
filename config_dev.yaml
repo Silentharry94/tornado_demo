@@ -3,24 +3,25 @@ mysql:
   port: 3306
   user: "root"
   password: "qyGHtJBZUW"
-  database: "tornado"
+  database: "web_server"
   max_connections: 16
   timeout: 4
 
 mongo:
   host: "127.0.0.1"
   port: 27017
-  auth_db:
+  auth_db: "admin"
   user:
   password:
+  serverSelectionTimeoutMS: 5000
 
 redis:
-  host: "127.0.0.1"
-  port: 6379
-  db: 1
-  retry: 3
+  address: 'redis://127.0.0.1:6379'
+  db: 3
+  encoding: "utf-8"
   password:
-  decode_responses: true
+  maxsize: 16
+  timeout: 3
 
 rabbitmq:
   user:

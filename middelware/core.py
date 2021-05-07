@@ -10,9 +10,8 @@ from copy import deepcopy
 
 import tornado.web
 import ujson
-from playhouse.pool import PooledMySQLDatabase
-from pymongo import MongoClient
-from redis.client import Redis
+from aioredis import Redis
+from pymongo.database import Database
 from tornado.web import RequestHandler
 
 from commons.common import AsyncClientSession, perf_time
@@ -21,6 +20,7 @@ from commons.constant import Constant
 from commons.initlog import logging
 from commons.status_code import *
 from scripts.init_tables import complete_table
+from utils.async_db import AsyncManager
 
 
 def log_request(handler):
@@ -54,11 +54,11 @@ class BaseHandler(RequestHandler):
         return self.settings["redis"]
 
     @property
-    def mongo(self) -> MongoClient:
+    def mongo(self) -> Database:
         return self.settings["mongo"]
 
     @property
-    def mysql(self) -> PooledMySQLDatabase:
+    def mysql(self) -> AsyncManager:
         return self.settings["mysql"]
 
     @property
@@ -69,7 +69,7 @@ class BaseHandler(RequestHandler):
         self._inner = dict.fromkeys(Constant.COMMON_REQUEST_PARAM, "")
         headers_log = self.request.headers._dict
         _host = headers_log.get("Host")
-        real_ip = headers_log.get("X-Real-IP") if headers_log.get("X-Real-IP") else self.request.remote_ip
+        real_ip = headers_log["X-Real-IP"] if headers_log.get("X-Real-IP") else self.request.remote_ip
         self._inner["start_time"] = perf_time()
         self._inner["client_id"] = real_ip
         self._inner["request_id"] = GenerateRandom.generate_uuid()

@@ -10,10 +10,10 @@ import datetime
 from peewee import *
 
 from commons.common import Common
-from utils.sync_db import MysqlConnect
+from utils.async_db import AsyncMySQLConnect
 
 mysql_config = Common.yaml_config("mysql")
-_mysql = MysqlConnect.init_db(mysql_config)
+mysql_client = AsyncMySQLConnect.init_db(mysql_config)
 
 
 class BaseModel(Model):
@@ -22,7 +22,7 @@ class BaseModel(Model):
         super().__init__(*args, **kwargs)
 
     class Meta:
-        database = _mysql
+        database = mysql_client
 
 
 class UriConfig(BaseModel):

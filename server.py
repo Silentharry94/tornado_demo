@@ -11,10 +11,9 @@ import uvloop
 from tornado import httpserver, ioloop
 from tornado.options import define, options
 
-from utils.sync_db import RedisConnect, MysqlConnect, MongodbConnect
-
 define("port", default=9376, type=int)
 define("env", default="local", type=str)
+options.logging = None
 options.parse_command_line()
 from commons.common import Common
 
@@ -25,26 +24,40 @@ from commons.constant import Constant
 from commons.initlog import logging
 from scripts.init_tables import sync_uri
 from urls.url import handlers_loads
-from middelware.core import log_request, BaseApp
+from utils.async_db import AsyncRedis, AsyncMySQLConnect, AsyncMongodbConnect, AsyncManager
+from middelware.core import BaseApp
 
 
-def app(options):
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    loop = asyncio.get_event_loop()
+def make_settings(loop) -> dict:
+    config = Common.yaml_config()
+    redis_config = config["redis"]
+    mongo_config = config["mongo"]
+    mysql_config = config["mysql"]
     async_client = AsyncClientSession()
+    mysql_client = AsyncMySQLConnect.init_db(mysql_config)
+    mysql_manager = AsyncManager(database=mysql_client)
+    mongo_client = AsyncMongodbConnect(mongo_config).client
+    redis_client = AsyncRedis(redis_config)
+    loop.run_until_complete(redis_client.init_db())
     loop.run_until_complete(async_client.init_session())
-    settings = {
+
+    return {
         "cookie_secret": "p4Qy1mcwQJiSOAytobquL3YDYuXDkkcYobmUWsaBuoo",
         'xsrf_cookies': False,
         'debug': False,
         "gzip": True,
         "env": options.env,
-        "log_function": log_request,
         "async_client": async_client,
-        "redis": RedisConnect(Common.yaml_config("redis")).client,
-        "mysql": MysqlConnect.init_db(Common.yaml_config("mysql")),
-        "mongo": MongodbConnect(Common.yaml_config("mongo")).client
+        "redis": redis_client.client,
+        "mysql": mysql_manager,
+        "mongo": mongo_client
     }
+
+
+def app(options):
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    loop = asyncio.get_event_loop()
+    settings = make_settings(loop)
     app = BaseApp(handlers_loads(), settings)
     sync_uri(handlers_loads())
     server = httpserver.HTTPServer(app)
@@ -54,7 +67,10 @@ def app(options):
                       f" at port [%s]" % options.port)
         ioloop.IOLoop.instance().start()
     except BaseException:
-        loop.run_until_complete(async_client.close())
+        settings["redis"].close()
+        loop.run_until_complete(settings["async_client"].close())
+        loop.run_until_complete(settings["redis"].wait_closed())
+        loop.run_until_complete(settings["mysql"].close())
         ioloop.IOLoop.instance().stop()
         logging.debug(f"{Constant.PROJECT} loop safe stop")
 
