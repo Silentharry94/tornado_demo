@@ -13,24 +13,6 @@ from loguru import logger
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 DEFAULT_LOG_PATH = os.path.join(BASE_PATH, "log")
 DEFAULT_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {process.id} | {name} | {function} | {line} | {message}"
-DEFAULT_CONFIG = {
-    "handlers": [
-        # sink: 输出位置,
-        # level: 输出等级,
-        # enqueue: 异步写入,
-        # rotation: 拆分文件方式,
-        # retention: 清理文件方式,
-        # format: 文件格式化方式
-        {
-            "sink": "%s/{time:YYYYMMDD}.log" % DEFAULT_LOG_PATH,
-            "enqueue": True,
-            "backtrace": True,
-            "rotation": "00:00",
-            "retention": "30 days",
-            "format": DEFAULT_FORMAT,
-        },
-    ]
-}
 
 API_LOG_PATH = os.path.join(BASE_PATH, "log", "api")
 API_HANDLERS = [

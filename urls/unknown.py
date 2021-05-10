@@ -8,7 +8,7 @@
 
 from tornado.web import url
 
-from handlers import unknown
+from views import unknown
 
 router = [
     url(r'.*', unknown.UnknownService, name="unknown"),

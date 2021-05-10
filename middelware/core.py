@@ -51,19 +51,19 @@ class BaseHandler(RequestHandler):
 
     @property
     def redis(self) -> Redis:
-        return self.settings["redis"]
+        return self.settings["controller"].redis
 
     @property
     def mongo(self) -> Database:
-        return self.settings["mongo"]
+        return self.settings["controller"].mongo
 
     @property
     def mysql(self) -> AsyncManager:
-        return self.settings["mysql"]
+        return self.settings["controller"].mysql
 
     @property
     def async_client(self) -> AsyncClientSession:
-        return self.settings["async_client"]
+        return self.settings["controller"].client
 
     def common_param(self):
         self._inner = dict.fromkeys(Constant.COMMON_REQUEST_PARAM, "")
@@ -86,10 +86,9 @@ class BaseHandler(RequestHandler):
                 "Content-Type", "").startswith("application/json"):
             try:
                 self.json_args = ujson.loads(self.request.body)
-            except BaseException:
-                logging.error("can't loads param: {}".format(
-                    self.request.body))
-                result = ReturnData(CODE_600, request_id=self._inner["request_id"])
+            except Exception as e:
+                logging.error(e)
+                result = ReturnData(CODE_101, request_id=self._inner["request_id"])
                 self.write(result.value)
                 self.finish()
             else:
