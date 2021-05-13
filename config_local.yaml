@@ -3,7 +3,7 @@ mysql:
   port: 3306
   user: "root"
   password: "qyGHtJBZUW"
-  database: "web_server"
+  database: "web_service"
   max_connections: 16
   timeout: 4
 

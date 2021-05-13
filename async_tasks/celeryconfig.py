@@ -20,7 +20,6 @@ BROKER_URL = 'pyamqp://{0}:{1}@{2}:{3}/{4}'.format(
     mq_config["user"], mq_config["password"],
     mq_config["host"], mq_config["port"],
     mq_config["vhost"])
-# BROKER_URL = 'pyamqp://hanley-test:123456@localhost:5672/test'
 CELERY_RESULT_BACKEND = '{0}/{1}'.format(REDIS_URL, rbd_config["db"])
 
 platforms.C_FORCE_ROOT = True
@@ -33,7 +32,7 @@ CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 
 CELERY_TASK_RESULT_EXPIRES = 60 * 60
 CELERY_ACKS_LATE = True
-CELERYD_CONCURRENCY = 2  # 设置并行的worker数
+CELERYD_CONCURRENCY = os.cpu_count()  # 设置并行的worker数
 CELERYD_PREFETCH_MULTIPLIER = os.cpu_count()  # celery worker 每次去取任务的数量
 CELERYD_MAX_TASKS_PER_CHILD = 200  # 每个worker最多执行完100个任务就会被销毁，可防止内存泄露
 

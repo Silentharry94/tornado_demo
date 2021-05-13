@@ -19,7 +19,6 @@ class ControllerBase(object):
         "mongo",
         "mysql",
         "loop",
-        "env",
     )
     _init = False
 

@@ -28,7 +28,6 @@ from middelware.core import BaseApp
 
 def make_settings(options) -> dict:
     controller = ControllerBase()
-    controller.env = options.env
     return {
         "cookie_secret": "p4Qy1mcwQJiSOAytobquL3YDYuXDkkcYobmUWsaBuoo",
         'xsrf_cookies': False,

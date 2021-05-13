@@ -49,11 +49,20 @@ CELERY_HANDLERS = [
 
 
 class ServerLog:
+    __conn = {}
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, '_instance'):
+            cls._instance = super(ServerLog, cls).__new__(cls)
+        return cls._instance
 
     def __init__(self, channel: str, handlers: list):
-        self.channel = channel
-        _ = [logger.add(**h) for h in handlers]
-        self.client = logger.bind(channel=channel)
+        if not self.__conn.get(channel):
+            self.channel = channel
+            _ = [logger.add(**h) for h in handlers]
+            client = logger.bind(channel=channel)
+            self.__conn.setdefault(channel, client)
+        self.client = self.__conn[channel]
 
 
 logging = ServerLog("api", API_HANDLERS).client

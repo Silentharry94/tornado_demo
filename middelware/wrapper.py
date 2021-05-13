@@ -8,6 +8,8 @@
 import functools
 import traceback
 
+from jsonschema import Draft4Validator, ValidationError
+
 from commons.common import perf_time
 from commons.initlog import logging
 from commons.status_code import *
@@ -15,7 +17,15 @@ from middelware.core import ReturnData
 
 
 async def group_check(self, schema):
-    return CODE_0
+    _code = CODE_0
+    # 参数校验
+    if schema:
+        try:
+            Draft4Validator(schema=schema).validate(self.parameter)
+        except ValidationError as e:
+            logging.warning("{}: {}".format(CODE_101, e.message))
+            _code = CODE_101
+    return _code
 
 
 def uri_check(schema=None):

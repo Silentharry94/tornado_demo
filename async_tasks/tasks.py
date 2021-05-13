@@ -4,9 +4,6 @@ from celery import Task
 from playhouse.pool import PooledMySQLDatabase
 from pymongo import MongoClient
 from redis.client import Redis
-from tornado.httpclient import AsyncHTTPClient
-
-AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient", max_clients=1000)
 
 from commons.initlog import celery_log as logging
 from commons.common import Common, SyncClientSession

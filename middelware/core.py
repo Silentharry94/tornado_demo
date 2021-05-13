@@ -11,7 +11,7 @@ from copy import deepcopy
 import tornado.web
 import ujson
 from aioredis import Redis
-from pymongo.database import Database
+from motor.core import AgnosticClient
 from tornado.web import RequestHandler
 
 from commons.common import AsyncClientSession, perf_time
@@ -54,7 +54,7 @@ class BaseHandler(RequestHandler):
         return self.settings["controller"].redis
 
     @property
-    def mongo(self) -> Database:
+    def mongo(self) -> AgnosticClient:
         return self.settings["controller"].mongo
 
     @property

@@ -15,7 +15,7 @@ from models.test import AsyncDB
 
 
 class HelloService(BaseHandler):
-    SUPPORTED_METHODS = ("GET", "POST", "PUT")
+    SUPPORTED_METHODS = ("GET", "POST", "DELETE")
 
     @uri_check()
     async def get(self):
@@ -25,7 +25,7 @@ class HelloService(BaseHandler):
         # data = [{"num": i / 100 + (i + 1) / 10} for i in range(100)]
         redis_data = await self.redis.hgetall("STR_NOW")
         skip_num = (page - 1) * page_size
-        mongo_query = self.mongo["web_server"]["test"].find(
+        mongo_query = self.mongo["web_service"]["test"].find(
             {}, {"_id": 0}).skip(skip_num).limit(page_size)
         mongo_data = [item async for item in mongo_query]
         display = (AsyncDB.request_id, AsyncDB.type, AsyncDB.type_id, AsyncDB.pid)
@@ -44,7 +44,8 @@ class HelloService(BaseHandler):
     @uri_check()
     async def post(self):
         self.redis.hset("STR_NOW", self._inner["request_id"], str_now())
-        await self.mongo["web_server"]["test"].insert_one({"parameter": self.parameter})
+        await self.mongo["web_service"]["test"].insert_one(
+            {"parameter": self.parameter})
         mysql_sql = AsyncDB.insert(
             pid=os.getpid(),
             type="MYSQL",
@@ -73,4 +74,11 @@ class HelloService(BaseHandler):
         await self.mysql.execute(mongo_sql)
         await self.mysql.execute(redis_sql)
         await self.mysql.execute(client_sql)
+        return ReturnData()
+
+    @uri_check()
+    async def delete(self):
+        await self.redis.delete("STR_NOW")
+        self.mongo.drop_database("web_service")
+        AsyncDB.truncate_table()
         return ReturnData()

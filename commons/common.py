@@ -27,6 +27,7 @@ from functools import wraps
 from random import choice
 from string import ascii_letters
 
+import xmltodict
 import yaml
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -38,7 +39,7 @@ from commons.constant import Constant
 from commons.initlog import logging
 
 
-def str_now(): return time.strftime("%Y-%m-%d %X")
+def str_now(format="%Y-%m-%d %X"): return time.strftime(format)
 
 
 def datetime_now(): return datetime.datetime.now()
@@ -47,28 +48,40 @@ def datetime_now(): return datetime.datetime.now()
 def perf_time(): return time.perf_counter()
 
 
-def cost_time(func):
-    def _cost(func_name, start_time):
-        end_time = perf_time()
-        cost = (end_time - start_time) * 1000
-        logging.debug(f">>>function: {func_name} duration: {cost}ms<<<")
-        return
+def cost_time(func_name, start_time, log=logging):
+    end_time = perf_time()
+    cost = (end_time - start_time) * 1000
+    log.debug(f">>>function: {func_name} duration: {cost}ms<<<")
+    return
 
-    if asyncio.iscoroutinefunction(func):
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            start_time = perf_time()
-            return_data = await func(*args, **kwargs)
-            _cost(func.__name__, start_time)
-            return return_data
-    else:
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            start_time = perf_time()
-            return_data = func(*args, **kwargs)
-            _cost(func.__name__, start_time)
-            return return_data
-    return wrapper
+
+def catch_exc(calc_time: bool = False, log=logging):
+    def _catch_exc(func):
+        if asyncio.iscoroutinefunction(func):
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                start_time = perf_time()
+                try:
+                    return_data = await func(*args, **kwargs)
+                    return return_data
+                except Exception as e:
+                    log.error(e)
+                    log.error(traceback.format_exc())
+                if calc_time: cost_time(func.__name__, start_time, log)
+        else:
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                start_time = perf_time()
+                try:
+                    return_data = func(*args, **kwargs)
+                    return return_data
+                except Exception as e:
+                    log.error(e)
+                    log.error(traceback.format_exc())
+                if calc_time: cost_time(func.__name__, start_time, log)
+        return wrapper
+
+    return _catch_exc
 
 
 def singleton(cls):
@@ -81,18 +94,6 @@ def singleton(cls):
         return _instance[cls]
 
     return _singleton
-
-
-def catch_exc(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logging.error(e)
-            logging.error(traceback.format_exc())
-
-    return wrapper
 
 
 class Common(object):
@@ -241,6 +242,27 @@ class Common(object):
         content_type = 'multipart/form-data; boundary=%s' % boundary_u
         return content_type, body
 
+    @staticmethod
+    def dict2xml(dict_data, root="xml") -> str:
+        """
+        字典转xml
+        dict_data: 字典数据
+        root：根结点标签
+        """
+        _dictXml = {root: dict_data}
+        xmlstr = xmltodict.unparse(_dictXml, pretty=True)
+        return xmlstr
+
+    @staticmethod
+    def xml2dict(xml_data) -> dict:
+        """
+        xml转dict
+        xml_data: xml字符串
+        return: dict字符串
+        """
+        data = xmltodict.parse(xml_data, process_namespaces=True)
+        return dict(list(data.values())[0])
+
 
 class GenerateRandom(object):
 
@@ -368,7 +390,7 @@ class Encrypt(object):
         return md5_sign.upper()
 
     @staticmethod
-    @catch_exc
+    @catch_exc()
     def aes_encrypt(key, data):
         '''
         AES的ECB模式加密方法
@@ -387,7 +409,7 @@ class Encrypt(object):
         return enctext
 
     @staticmethod
-    @catch_exc
+    @catch_exc()
     def aes_decrypt(key, data):
         '''
         :param key: 密钥
@@ -403,7 +425,7 @@ class Encrypt(object):
         return text_decrypted
 
     @staticmethod
-    @catch_exc
+    @catch_exc()
     def set_auth_cookies(key, data):
         '''
         加密cookies
@@ -418,7 +440,7 @@ class Encrypt(object):
         return cookies_json
 
     @staticmethod
-    @catch_exc
+    @catch_exc()
     def get_auth_cookies(key, data):
         '''
         解密cookies
@@ -439,7 +461,7 @@ class SyncClientSession(Session):
             cls._instance = super(SyncClientSession, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, time_out=2, pool_num=10, pool_max_size=50, max_retries=3):
+    def __init__(self, time_out=30, pool_num=10, pool_max_size=50, max_retries=3):
         super(SyncClientSession, self).__init__()
         self._time_out = time_out
         self._pool_num = pool_num
@@ -456,6 +478,7 @@ class SyncClientSession(Session):
             max_retries=self._max_retries
         ))
 
+    @catch_exc(calc_time=True)
     def request(self, method, url, headers=None, timeout=None, **kwargs):
         timeout = timeout or self._time_out
         headers = headers or {}
@@ -490,7 +513,7 @@ class AsyncClientSession:
     async def request(self, method, url, **kwargs):
         return await self.session.request(method, url, **kwargs)
 
-    @cost_time
+    @catch_exc(calc_time=True)
     async def fetch_json(self, method, url, **kwargs):
         async with self.session.request(method, url, **kwargs) as response:
             return await response.json()
