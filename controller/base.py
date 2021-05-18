@@ -14,7 +14,7 @@ from utils.async_db import AsyncMySQLConnect, AsyncManager, AsyncMongodbConnect,
 
 class ControllerBase(object):
     __slots__ = (
-        "client",
+        "async_client",
         "redis",
         "mongo",
         "mysql",
@@ -46,7 +46,7 @@ class ControllerBase(object):
         redis_client = AsyncRedis(redis_config)
         self.loop.run_until_complete(redis_client.init_db())
         self.loop.run_until_complete(async_client.init_session())
-        self.client = async_client
+        self.async_client = async_client
         self.redis = redis_client.client
         self.mongo = mongo_client
         self.mysql = mysql_manager
@@ -54,6 +54,6 @@ class ControllerBase(object):
 
     def close(self):
         self.redis.close()
-        self.loop.run_until_complete(self.client.close())
+        self.loop.run_until_complete(self.async_client.close())
         self.loop.run_until_complete(self.redis.wait_closed())
         self.loop.run_until_complete(self.mysql.close())

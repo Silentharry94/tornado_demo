@@ -63,7 +63,7 @@ class BaseHandler(RequestHandler):
 
     @property
     def async_client(self) -> AsyncClientSession:
-        return self.settings["controller"].client
+        return self.settings["controller"].async_client
 
     def common_param(self):
         self._inner = dict.fromkeys(Constant.COMMON_REQUEST_PARAM, "")
