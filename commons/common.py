@@ -12,7 +12,6 @@ import configparser
 import datetime
 import fcntl
 import filecmp
-import functools
 import hashlib
 import json
 import os
@@ -56,32 +55,33 @@ def cost_time(func_name, start_time, log=logging):
 
 
 def catch_exc(calc_time: bool = False, log=logging):
-    def _catch_exc(func):
-        if asyncio.iscoroutinefunction(func):
-            @functools.wraps(func)
-            async def wrapper(*args, **kwargs):
-                start_time = perf_time()
-                try:
-                    return_data = await func(*args, **kwargs)
-                    return return_data
-                except Exception as e:
-                    log.error(e)
-                    log.error(traceback.format_exc())
-                if calc_time: cost_time(func.__name__, start_time, log)
-        else:
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                start_time = perf_time()
-                try:
+    def cost_time(func):
+        def _cost(func_name, start_time):
+            end_time = perf_time()
+            cost = (end_time - start_time) * 1000
+            log.debug(f">>>function: {func_name} duration: {cost}ms<<<")
+            return
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = perf_time()
+            return_data = None
+            log.debug(f"start invoke {func.__name__}")
+            try:
+                if asyncio.iscoroutinefunction(func):
+                    return_data = asyncio.run(func(*args, **kwargs))
+                else:
                     return_data = func(*args, **kwargs)
-                    return return_data
-                except Exception as e:
-                    log.error(e)
-                    log.error(traceback.format_exc())
-                if calc_time: cost_time(func.__name__, start_time, log)
+            except Exception as e:
+                log.error(e)
+                log.error(traceback.format_exc())
+            if calc_time: _cost(func.__name__, start_time)
+            log.debug(f"end invoke {func.__name__}")
+            return return_data
+
         return wrapper
 
-    return _catch_exc
+    return cost_time
 
 
 def singleton(cls):
