@@ -58,20 +58,17 @@ def catch_exc(calc_time: bool = False, log=logging):
     def cost_time(func):
         def _cost(func_name, start_time):
             end_time = perf_time()
-            cost = (end_time - start_time) * 1000
+            cost = round((end_time - start_time) * 1000, 3)
             log.debug(f">>>function: {func_name} duration: {cost}ms<<<")
             return
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        async def async_wrapper(*args, **kwargs):
             start_time = perf_time()
             return_data = None
             log.debug(f"start invoke {func.__name__}")
             try:
-                if asyncio.iscoroutinefunction(func):
-                    return_data = asyncio.run(func(*args, **kwargs))
-                else:
-                    return_data = func(*args, **kwargs)
+                return_data = await func(*args, **kwargs)
             except Exception as e:
                 log.error(e)
                 log.error(traceback.format_exc())
@@ -79,8 +76,24 @@ def catch_exc(calc_time: bool = False, log=logging):
             log.debug(f"end invoke {func.__name__}")
             return return_data
 
-        return wrapper
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            start_time = perf_time()
+            return_data = None
+            log.debug(f"start invoke {func.__name__}")
+            try:
+                return_data = func(*args, **kwargs)
+            except Exception as e:
+                log.error(e)
+                log.error(traceback.format_exc())
+            if calc_time: _cost(func.__name__, start_time)
+            log.debug(f"end invoke {func.__name__}")
+            return return_data
 
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return sync_wrapper
     return cost_time
 
 
@@ -426,7 +439,7 @@ class Encrypt(object):
 
     @staticmethod
     @catch_exc()
-    def set_auth_cookies(key, data):
+    def set_fernet_token(key, data):
         '''
         加密cookies
         :param token:
@@ -441,7 +454,7 @@ class Encrypt(object):
 
     @staticmethod
     @catch_exc()
-    def get_auth_cookies(key, data):
+    def get_fernet_token(key, data):
         '''
         解密cookies
         :param token:
