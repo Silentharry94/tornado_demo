@@ -32,18 +32,18 @@ def uri_check(schema=None):
     def validate(func):
         @functools.wraps(func)
         async def async_wrapper(self, *args, **kwargs):
-            return_data = ReturnData(CODE_0)
             request_id = self._inner.get("request_id", "")
             logging.debug(f"parameter: {self.parameter} request_id: {request_id}")
             try:
-                return_data.code = await group_check(self, schema)
-                if return_data.code == CODE_0:
+                check_code = await group_check(self, schema)
+                if check_code == CODE_0:
                     return_data = await func(self, *args, **kwargs)
+                else:
+                    return_data = ReturnData(check_code)
             except BaseException as e:
                 logging.error(e)
                 logging.error(traceback.format_exc())
-                return_data.trace = str(e)
-                return_data.code = CODE_500
+                return_data = ReturnData(CODE_500, trace=str(e))
             return_data.request_id = request_id
             await self.finish(return_data.value)
             self._inner["end_time"] = perf_time()
