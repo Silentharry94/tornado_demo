@@ -468,6 +468,7 @@ class Encrypt(object):
 
 
 class SyncClientSession(Session):
+    _init = False
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, '_instance'):
@@ -475,6 +476,8 @@ class SyncClientSession(Session):
         return cls._instance
 
     def __init__(self, time_out=30, pool_num=10, pool_max_size=50, max_retries=3):
+        if self._init:
+            return
         super(SyncClientSession, self).__init__()
         self._time_out = time_out
         self._pool_num = pool_num
@@ -490,8 +493,8 @@ class SyncClientSession(Session):
             pool_maxsize=self._pool_max_size,
             max_retries=self._max_retries
         ))
+        self._init = True
 
-    @catch_exc(calc_time=True)
     def request(self, method, url, headers=None, timeout=None, **kwargs):
         timeout = timeout or self._time_out
         headers = headers or {}
@@ -499,6 +502,10 @@ class SyncClientSession(Session):
             headers["X-Request-ID"] = uuid.uuid4().hex
         return super().request(
             method, url, headers=headers, timeout=timeout, **kwargs)
+
+    @catch_exc(calc_time=True)
+    def sync_json(self, method, url, headers=None, timeout=None, **kwargs):
+        return self.request(method, url, headers=headers, timeout=timeout, **kwargs).json()
 
 
 class AsyncClientSession:
@@ -527,7 +534,7 @@ class AsyncClientSession:
         return await self.session.request(method, url, **kwargs)
 
     @catch_exc(calc_time=True)
-    async def fetch_json(self, method, url, **kwargs):
+    async def async_json(self, method, url, **kwargs):
         async with self.session.request(method, url, **kwargs) as response:
             return await response.json()
 
