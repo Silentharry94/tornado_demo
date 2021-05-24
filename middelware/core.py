@@ -47,7 +47,6 @@ class BaseHandler(RequestHandler):
     def __init__(self, application, request, **kwargs):
         super(BaseHandler, self).__init__(application, request, **kwargs)
         self.parameter = {}
-        self._inner = {}
 
     @property
     def redis(self) -> Redis:
@@ -66,13 +65,13 @@ class BaseHandler(RequestHandler):
         return self.settings["controller"].async_client
 
     def common_param(self):
-        self._inner = dict.fromkeys(Constant.COMMON_REQUEST_PARAM, "")
+        self.parameter = dict.fromkeys(Constant.COMMON_REQUEST_PARAM, "")
         headers_log = self.request.headers._dict
         _host = headers_log.get("Host")
         real_ip = headers_log["X-Real-IP"] if headers_log.get("X-Real-IP") else self.request.remote_ip
-        self._inner["start_time"] = perf_time()
-        self._inner["client_id"] = real_ip
-        self._inner["request_id"] = GenerateRandom.generate_uuid()
+        self.parameter["start_time"] = perf_time()
+        self.parameter["client_id"] = real_ip
+        self.parameter["request_id"] = GenerateRandom.generate_uuid()
 
     def request_param(self):
         query = deepcopy(self.request.arguments)
@@ -88,7 +87,7 @@ class BaseHandler(RequestHandler):
                 self.json_args = ujson.loads(self.request.body)
             except Exception as e:
                 logging.error(e)
-                result = ReturnData(CODE_101, request_id=self._inner["request_id"])
+                result = ReturnData(CODE_101, request_id=self.parameter["request_id"])
                 self.write(result.value)
                 self.finish()
             else:

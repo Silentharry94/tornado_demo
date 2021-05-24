@@ -7,8 +7,9 @@
 # @Desc    :
 import os
 
-from commons.common import str_now
+from commons.common import str_now, SyncClientSession
 from commons.status_code import *
+from commons.initlog import logging
 from middelware.core import BaseHandler, ReturnData
 from middelware.wrapper import uri_check
 from models.test import AsyncDB
@@ -43,32 +44,38 @@ class HelloService(BaseHandler):
 
     @uri_check()
     async def post(self):
-        self.redis.hset("STR_NOW", self._inner["request_id"], str_now())
+        async_fetch_res = await self.async_client.async_json(
+            "GET", "https://api.bilibili.com/x/web-frontend/data/collector")
+        sync_fetch_res = SyncClientSession().sync_json(
+            "GET", "https://api.bilibili.com/x/web-frontend/data/collector")
+        logging.debug(f"sync_fetch_res: {sync_fetch_res}")
+        logging.debug(f"async_fetch_res: {async_fetch_res}")
+        self.redis.hset("STR_NOW", self.parameter["request_id"], str_now())
         await self.mongo["web_service"]["test"].insert_one(
             {"parameter": self.parameter})
         mysql_sql = AsyncDB.insert(
             pid=os.getpid(),
             type="MYSQL",
             type_id=id(self.mysql),
-            request_id=self._inner['request_id']
+            request_id=self.parameter['request_id']
         )
         mongo_sql = AsyncDB.insert(
             pid=os.getpid(),
             type="MONGODB",
             type_id=id(self.mongo),
-            request_id=self._inner['request_id']
+            request_id=self.parameter['request_id']
         )
         redis_sql = AsyncDB.insert(
             pid=os.getpid(),
             type="REDIS",
             type_id=id(self.redis),
-            request_id=self._inner['request_id']
+            request_id=self.parameter['request_id']
         )
         client_sql = AsyncDB.insert(
             pid=os.getpid(),
             type="CLIENT",
             type_id=id(self.async_client),
-            request_id=self._inner['request_id']
+            request_id=self.parameter['request_id']
         )
         await self.mysql.execute(mysql_sql)
         await self.mysql.execute(mongo_sql)

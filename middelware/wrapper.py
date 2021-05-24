@@ -5,12 +5,11 @@
 # @Author  : Hanley
 # @File    : wrapper.py
 # @Desc    : 装饰器文件
-import functools
 import traceback
 
 from jsonschema import Draft4Validator, ValidationError
 
-from commons.common import perf_time
+from commons.common import datetime_now
 from commons.initlog import logging
 from commons.status_code import *
 from middelware.core import ReturnData
@@ -30,29 +29,38 @@ async def group_check(self, schema):
 
 def uri_check(schema=None):
     def validate(func):
-        @functools.wraps(func)
-        async def async_wrapper(self, *args, **kwargs):
-            request_id = self._inner.get("request_id", "")
-            logging.debug(f"parameter: {self.parameter} request_id: {request_id}")
+        async def wrapper(self, *args, **kwargs):
+            request_id = self.parameter["request_id"]
+            request_time = self.parameter["request_time"]
+            logging.debug(f"headers: {self.request.headers._dict}")
+            logging.debug(">>>parameter: {}".format(self.parameter))
+            _return_data = ReturnData(CODE_0)
             try:
                 check_code = await group_check(self, schema)
+                # 通过校验
                 if check_code == CODE_0:
-                    return_data = await func(self, *args, **kwargs)
+                    _return_data = await func(self, *args, **kwargs)
                 else:
-                    return_data = ReturnData(check_code)
-            except BaseException as e:
-                logging.error(e)
+                    _return_data = ReturnData(check_code)
+            except Exception as e:
                 logging.error(traceback.format_exc())
-                return_data = ReturnData(CODE_500, trace=str(e))
-            return_data.request_id = request_id
-            await self.finish(return_data.value)
-            self._inner["end_time"] = perf_time()
-            duration = (self._inner["end_time"] - self._inner["start_time"]) * 1000
+                _return_data = ReturnData(CODE_500, trace=str(e))
+            if isinstance(_return_data, ReturnData):
+                _return_data.request_id = request_id
+                return_data = _return_data.value
+            else:
+                return_data = _return_data
+            end_time = datetime_now()
+            await self.finish(return_data)
+            duration = round(
+                (end_time - request_time).total_seconds() * 1000, 3)
+            self.parameter["duration"] = duration
             logging.debug(f"path: {self.request.path}, "
-                          f"request_id: {request_id} ,"
+                          f"request_id: {request_id}, "
+                          f"code: {return_data.get('code')}, "
                           f"duration: {duration}ms")
-            return
+            return return_data
 
-        return async_wrapper
+        return wrapper
 
     return validate
