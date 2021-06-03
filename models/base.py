@@ -6,20 +6,34 @@
 # @File    : base.py
 # @Desc    : 数据模型
 import datetime
+from collections import defaultdict
 
 from peewee import *
 
 from commons.common import Common
-from utils.async_db import AsyncMySQLConnect
+from utils.async_db  import AsyncMySQLConnect
 
 mysql_config = Common.yaml_config("mysql")
 mysql_client = AsyncMySQLConnect.init_db(mysql_config)
 
 
-class BaseModel(Model):
+class _BaseModel(Model):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def _to_dict(self, display_fields, format_datetime=True):
+        result = defaultdict()
+        for fields in display_fields:
+            value = getattr(self, fields)
+            if format_datetime and isinstance(
+                    value, (datetime.datetime, datetime.date)):
+                value = Common.format_datetime(value)
+            result.setdefault(fields, value)
+        return result
+
+
+class BaseModel(_BaseModel):
 
     class Meta:
         database = mysql_client
@@ -28,7 +42,7 @@ class BaseModel(Model):
 class UriConfig(BaseModel):
     code = IntegerField(unique=True, verbose_name="接口编码")
     path = CharField(max_length=128, default="", unique=True, verbose_name="接口地址")
-    name = CharField(max_length=63, default="", verbose_name="接口名称")
+    name = CharField(max_length=63, default="", unique=True, verbose_name="接口名称")
     regex = SmallIntegerField(default=0, verbose_name="是否使用正则")
     pattern = CharField(max_length=256, default="", verbose_name="正则表达式")
     description = CharField(max_length=256, default="", verbose_name="接口描述")

@@ -9,7 +9,13 @@
 import asyncio
 
 from commons.common import Common, AsyncClientSession
-from utils.async_db import AsyncMySQLConnect, AsyncManager, AsyncMongodbConnect, AsyncRedis
+from utils.async_db import (
+    AsyncMySQLConnect,
+    AsyncManager,
+    AsyncMongodbConnect,
+    AsyncRedis
+)
+from utils.kafka_producer import KafkaEntryPoint
 
 
 class ControllerBase(object):
@@ -19,6 +25,7 @@ class ControllerBase(object):
         "mongo",
         "mysql",
         "loop",
+        "kafka_producer"
     )
     _init = False
 
@@ -39,9 +46,11 @@ class ControllerBase(object):
         redis_config = config["redis"]
         mongo_config = config["mongo"]
         mysql_config = config["mysql"]
+
         async_client = AsyncClientSession()
         mysql_client = AsyncMySQLConnect.init_db(mysql_config)
         mysql_manager = AsyncManager(database=mysql_client)
+
         mongo_client = AsyncMongodbConnect(mongo_config).client
         redis_client = AsyncRedis(redis_config)
         self.loop.run_until_complete(redis_client.init_db())
@@ -50,6 +59,7 @@ class ControllerBase(object):
         self.redis = redis_client.client
         self.mongo = mongo_client
         self.mysql = mysql_manager
+        self.kafka_producer = KafkaEntryPoint()
         ControllerBase._init = True
 
     def close(self):
@@ -57,3 +67,5 @@ class ControllerBase(object):
         self.loop.run_until_complete(self.async_client.close())
         self.loop.run_until_complete(self.redis.wait_closed())
         self.loop.run_until_complete(self.mysql.close())
+        self.kafka_producer.producer.flush(60)
+        self.kafka_producer.producer.close(60)

@@ -13,6 +13,24 @@ from loguru import logger
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 DEFAULT_LOG_PATH = os.path.join(BASE_PATH, "log")
 DEFAULT_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {process.id} | {name} | {function} | {line} | {message}"
+DEFAULT_CONFIG = {
+    "handlers": [
+        # sink: 输出位置,
+        # level: 输出等级,
+        # enqueue: 异步写入,
+        # rotation: 拆分文件方式,
+        # retention: 清理文件方式,
+        # format: 文件格式化方式
+        {
+            "sink": "%s/{time:YYYYMMDD}.log" % DEFAULT_LOG_PATH,
+            "enqueue": True,
+            "backtrace": True,
+            "rotation": "00:00",
+            "retention": "30 days",
+            "format": DEFAULT_FORMAT,
+        },
+    ]
+}
 
 API_LOG_PATH = os.path.join(BASE_PATH, "log", "api")
 API_HANDLERS = [
@@ -49,20 +67,11 @@ CELERY_HANDLERS = [
 
 
 class ServerLog:
-    __conn = {}
-
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, '_instance'):
-            cls._instance = super(ServerLog, cls).__new__(cls)
-        return cls._instance
 
     def __init__(self, channel: str, handlers: list):
-        if not self.__conn.get(channel):
-            self.channel = channel
-            _ = [logger.add(**h) for h in handlers]
-            client = logger.bind(channel=channel)
-            self.__conn.setdefault(channel, client)
-        self.client = self.__conn[channel]
+        self.channel = channel
+        _ = [logger.add(**h) for h in handlers]
+        self.client = logger.bind(channel=channel)
 
 
 logging = ServerLog("api", API_HANDLERS).client

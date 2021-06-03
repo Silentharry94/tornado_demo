@@ -4,15 +4,13 @@
 # @Author  : Hanley
 # @File    : server.py
 # @Desc    : 项目启动文件
-import asyncio
-import logging
 
-import uvloop
 from tornado import httpserver, ioloop
 from tornado.options import define, options
 
 define("port", default=9376, type=int)
 define("env", default="local", type=str)
+define("channel", default="demo", type=str)
 options.logging = None
 options.parse_command_line()
 from commons.common import Common
@@ -34,12 +32,12 @@ def make_settings(options) -> dict:
         'debug': False,
         "gzip": True,
         "env": options.env,
+        "channel": options.channel,
         "controller": controller,
     }
 
 
 def app(options):
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     settings = make_settings(options)
     app = BaseApp(handlers_loads(), settings)
     sync_uri(handlers_loads())

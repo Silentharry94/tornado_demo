@@ -50,6 +50,7 @@ class AsyncMongodbConnect:
             config_client.setdefault("config", self.config)
             config_client.setdefault("client", self.client)
             self.__conn.setdefault(self.peer_conn, config_client)
+            logging.debug(f"connect mongodb {self.peer_conn} successful")
         else:
             self.client = self.__conn[self.peer_conn]["client"]
             self.config = self.__conn[self.peer_conn]["config"]
@@ -117,6 +118,7 @@ class AsyncMySQLConnect(ReconnectMixin, PooledMySQLDatabase):
                 port=config['port']
             )
             AsyncMySQLConnect.__conn[peer_conn] = _database
+            logging.debug(f"connect mysql {peer_conn} successful")
         return AsyncMySQLConnect.__conn[peer_conn]
 
     def execute_sql(self, sql, params=None, commit=True):
@@ -149,11 +151,6 @@ class AsyncManager(Manager):
     """
     peewee_async高级API
     """
-
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, '_instance'):
-            cls._instance = super(AsyncManager, cls).__new__(cls)
-        return cls._instance
 
     async def get_or_none(self, source_, *args, **kwargs):
         try:
@@ -189,4 +186,5 @@ class AsyncRedis:
         else:
             self.client = await aioredis.create_redis_pool(**self.config)
             self.__conn[peer_conn] = self.client
+            logging.debug(f"connect redis {peer_conn} successful")
         return self.__conn[peer_conn]

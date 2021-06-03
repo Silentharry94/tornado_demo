@@ -15,7 +15,18 @@ def make_file_path(config_name: str) -> str:
 
 
 class RedisKey:
-    pass
+    second = 1
+    minute = 60
+    hour = minute * 60
+    day = hour * 24
+    month = day * 30
+
+    WEBSERVICE_USER_LOGIN = "webservice_user_login_{}"
+    DOMAIN_CONFIG = "domain_config_{}"
+    USER_INFO_BY_UID = "user_info_by_uid_{}"
+    USER_ACCESS_API_LIMIT = "user_access_api_limit_{}"
+    USER_RESET_PWD_VERIFY_CODE = "user_reset_pwd_verify_code_{}"
+    USER_REGISTER_VERIFY_CODE = "user_register_verify_code_{}"
 
 
 class Constant:
@@ -49,6 +60,8 @@ class Constant:
     COMMON_REQUEST_PARAM = [
         "client_id", "request_id", "start_time",
     ]
+    NO_RECORD_URI = ()
+
     # external request
     TIME_OUT = 3
     MID_TIME_OUT = 10

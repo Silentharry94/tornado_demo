@@ -5,8 +5,8 @@ from playhouse.pool import PooledMySQLDatabase
 from pymongo import MongoClient
 from redis.client import Redis
 
-from commons.initlog import celery_log as logging
 from commons.common import Common, SyncClientSession
+from commons.initlog import celery_log as logging
 from utils.sync_db import MongodbConnect, RedisConnect, MysqlConnect
 
 

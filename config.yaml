@@ -35,7 +35,7 @@ email:
   password: ""
 
 kafka_cluster:
-  bootstrap_servers: ""
+  bootstrap_servers: "192.168.10.187:19090"
   sasl_mechanism:
   security_protocol:
   sasl_plain_username:

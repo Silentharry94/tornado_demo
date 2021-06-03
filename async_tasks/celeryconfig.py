@@ -20,6 +20,7 @@ BROKER_URL = 'pyamqp://{0}:{1}@{2}:{3}/{4}'.format(
     mq_config["user"], mq_config["password"],
     mq_config["host"], mq_config["port"],
     mq_config["vhost"])
+# BROKER_URL = 'pyamqp://hanley-test:123456@localhost:5672/test'
 CELERY_RESULT_BACKEND = '{0}/{1}'.format(REDIS_URL, rbd_config["db"])
 
 platforms.C_FORCE_ROOT = True

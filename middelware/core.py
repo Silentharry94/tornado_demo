@@ -14,13 +14,14 @@ from aioredis import Redis
 from motor.core import AgnosticClient
 from tornado.web import RequestHandler
 
-from commons.common import AsyncClientSession, perf_time
+from commons.common import AsyncClientSession, datetime_now
 from commons.common import Common, GenerateRandom
 from commons.constant import Constant
 from commons.initlog import logging
 from commons.status_code import *
 from scripts.init_tables import complete_table
 from utils.async_db import AsyncManager
+from utils.kafka_producer import KafkaEntryPoint
 
 
 def log_request(handler):
@@ -57,21 +58,40 @@ class BaseHandler(RequestHandler):
         return self.settings["controller"].mongo
 
     @property
+    def ext_mongo(self) -> AgnosticClient:
+        return self.settings["controller"].ext_mongo
+
+    @property
     def mysql(self) -> AsyncManager:
         return self.settings["controller"].mysql
+
+    @property
+    def epc_mysql(self) -> AsyncManager:
+        return self.settings["controller"].epc_mysql
 
     @property
     def async_client(self) -> AsyncClientSession:
         return self.settings["controller"].async_client
 
+    @property
+    def kafka_producer(self) -> KafkaEntryPoint:
+        return self.settings["controller"].kafka_producer
+
     def common_param(self):
         self.parameter = dict.fromkeys(Constant.COMMON_REQUEST_PARAM, "")
         headers_log = self.request.headers._dict
-        _host = headers_log.get("Host")
-        real_ip = headers_log["X-Real-IP"] if headers_log.get("X-Real-IP") else self.request.remote_ip
-        self.parameter["start_time"] = perf_time()
-        self.parameter["client_id"] = real_ip
+        real_ip = headers_log["X-Real-IP"] if headers_log.get("X-Real-IP") \
+            else self.request.remote_ip
+        domain = headers_log.get("Host")
+        pre_fix = domain.split(".")[0]
+        token_key = Constant.COOKIE_TOKEN.format(pre_fix)
+        uid_key = Constant.COOKIE_UID.format(pre_fix)
+        self.parameter["request_time"] = datetime_now()
+        self.parameter["client_ip"] = real_ip
         self.parameter["request_id"] = GenerateRandom.generate_uuid()
+        self.parameter["domain"] = domain
+        self.parameter["uid"] = self.get_cookie(uid_key, "")
+        self.parameter["access_token"] = self.get_cookie(token_key, "")
 
     def request_param(self):
         query = deepcopy(self.request.arguments)
@@ -111,7 +131,7 @@ class ReturnData:
     def __init__(self, code=1, data=None, msg=None,
                  decimal=False, trace="", request_id="", **kwargs):
         self.code = code
-        self.message = msg if msg else CN_CODE[code]
+        self.message = msg if msg else EN_CODE[code]
         self.data = Common.format_decimal(data) if decimal else data
         self.kwargs = kwargs
         self.trace = trace

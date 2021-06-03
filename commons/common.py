@@ -55,13 +55,7 @@ def cost_time(func_name, start_time, log=logging):
 
 
 def catch_exc(calc_time: bool = False, log=logging):
-    def cost_time(func):
-        def _cost(func_name, start_time):
-            end_time = perf_time()
-            cost = round((end_time - start_time) * 1000, 3)
-            log.debug(f">>>function: {func_name} duration: {cost}ms<<<")
-            return
-
+    def valid(func):
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             start_time = perf_time()
@@ -72,7 +66,7 @@ def catch_exc(calc_time: bool = False, log=logging):
             except Exception as e:
                 log.error(e)
                 log.error(traceback.format_exc())
-            if calc_time: _cost(func.__name__, start_time)
+            if calc_time: cost_time(func.__name__, start_time, log=log)
             log.debug(f"end invoke {func.__name__}")
             return return_data
 
@@ -86,7 +80,7 @@ def catch_exc(calc_time: bool = False, log=logging):
             except Exception as e:
                 log.error(e)
                 log.error(traceback.format_exc())
-            if calc_time: _cost(func.__name__, start_time)
+            if calc_time: cost_time(func.__name__, start_time, log=log)
             log.debug(f"end invoke {func.__name__}")
             return return_data
 
@@ -94,7 +88,8 @@ def catch_exc(calc_time: bool = False, log=logging):
             return async_wrapper
         else:
             return sync_wrapper
-    return cost_time
+
+    return valid
 
 
 def singleton(cls):
@@ -142,17 +137,36 @@ class Common(object):
             return data
 
     @staticmethod
-    def validate_phone(phone_number: str) -> bool:
-        _mobile_pattern = r"13\d{9}|14\d{9}|15\d{9}|16\d{9}|17\d{9}|18\d{9}|19\d{9}"
-        _landline_pattern = r"^[0][1-9]{2,3}-[0-9]{5,10}$"
-
+    def validate_phone(phone_number: str):
+        _mobile_pattern = r"1[356789]\d{9}"
+        _landline_pattern = r"\d{3}-\d{8}|\d{4}-\d{7}"
         mobile_pattern = re.compile(_mobile_pattern)
         landline_pattern = re.compile(_landline_pattern)
         _check = lambda p: p.findall(phone_number)
         if len(phone_number) == 11 and "-" not in phone_number:
-            return True if _check(mobile_pattern) else False
+            result = _check(mobile_pattern)
         else:
-            return True if _check(landline_pattern) else False
+            result = _check(landline_pattern)
+        return result
+
+    @staticmethod
+    def validate_email(email: str):
+        pattern = re.compile(r"[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)")
+        result = re.findall(pattern, email)
+        if result:
+            return result
+        else:
+            return result
+
+    @staticmethod
+    def validate_id_card(id_card: str):
+        pattern = re.compile(
+            r"[1-9]\d{5}(?:18|19|(?:[23]\d))\d{2}(?:(?:0[1-9])|(?:10|11|12))(?:(?:[0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]")
+        result = re.findall(pattern, id_card)
+        if result:
+            return result
+        else:
+            return result
 
     @staticmethod
     def decimal_dict(_dict: dict):
@@ -301,6 +315,13 @@ class GenerateRandom(object):
     def random_string(length=10):
         return ''.join(choice(ascii_letters) for _ in range(length))
 
+    @staticmethod
+    def random_digit(length=6):
+        result = ""
+        for _ in range(length):
+            result += str(random.randint(0, 9))
+        return result
+
 
 class Encrypt(object):
 
@@ -387,7 +408,7 @@ class Encrypt(object):
 
     @staticmethod
     def generate_fernet_key():
-        return Fernet.generate_key()
+        return Fernet.generate_key().upper().decode()
 
     @staticmethod
     def build_sign(dict_param: dict) -> str:
@@ -468,7 +489,6 @@ class Encrypt(object):
 
 
 class SyncClientSession(Session):
-    _init = False
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, '_instance'):
@@ -476,8 +496,6 @@ class SyncClientSession(Session):
         return cls._instance
 
     def __init__(self, time_out=30, pool_num=10, pool_max_size=50, max_retries=3):
-        if self._init:
-            return
         super(SyncClientSession, self).__init__()
         self._time_out = time_out
         self._pool_num = pool_num
@@ -493,8 +511,8 @@ class SyncClientSession(Session):
             pool_maxsize=self._pool_max_size,
             max_retries=self._max_retries
         ))
-        self._init = True
 
+    @catch_exc(calc_time=True)
     def request(self, method, url, headers=None, timeout=None, **kwargs):
         timeout = timeout or self._time_out
         headers = headers or {}
@@ -502,10 +520,6 @@ class SyncClientSession(Session):
             headers["X-Request-ID"] = uuid.uuid4().hex
         return super().request(
             method, url, headers=headers, timeout=timeout, **kwargs)
-
-    @catch_exc(calc_time=True)
-    def sync_json(self, method, url, headers=None, timeout=None, **kwargs):
-        return self.request(method, url, headers=headers, timeout=timeout, **kwargs).json()
 
 
 class AsyncClientSession:
@@ -534,9 +548,11 @@ class AsyncClientSession:
         return await self.session.request(method, url, **kwargs)
 
     @catch_exc(calc_time=True)
-    async def async_json(self, method, url, **kwargs):
+    async def fetch_json(self, method, url, **kwargs):
+        logging.debug(f"{method} {url} {kwargs}")
         async with self.session.request(method, url, **kwargs) as response:
-            return await response.json()
+            result = await response.json()
+            return result
 
     async def close(self):
         await self.session.close()

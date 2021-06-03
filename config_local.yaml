@@ -4,7 +4,7 @@ mysql:
   user: "root"
   password: "qyGHtJBZUW"
   database: "web_service"
-  max_connections: 16
+  max_connections: 4
   timeout: 4
 
 mongo:
@@ -30,3 +30,13 @@ rabbitmq:
   port:
   vhost:
 
+email:
+  username: ""
+  password: ""
+
+kafka_cluster:
+  bootstrap_servers: "127.0.0.1:9092"
+  sasl_mechanism:
+  security_protocol:
+  sasl_plain_username:
+  sasl_plain_password:
